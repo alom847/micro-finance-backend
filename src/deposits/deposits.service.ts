@@ -4,16 +4,17 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
+  deposits_deposit_status,
   deposits_interest_credit_frequency,
   deposits_payment_frequency,
   loans_emi_frequency,
   loans_interest_frequency,
   Prisma,
-} from '@prisma/client';
-import { DatabaseService } from '../database/database.service';
-import { calculateEmi, getTotalPayable } from '../utils/calculateEmi';
+} from "@prisma/client";
+import { DatabaseService } from "../database/database.service";
+import { calculateEmi, getTotalPayable } from "../utils/calculateEmi";
 
 @Injectable()
 export class DepositsService {
@@ -29,22 +30,66 @@ export class DepositsService {
 
   constructor(private readonly databaseService: DatabaseService) {}
 
+  async fetchAllDeposits(
+    category: string,
+    limit: number,
+    skip: number,
+    status: string | undefined
+  ) {
+    const deposits = await this.databaseService.deposits.findMany({
+      orderBy: {
+        created_at: "desc",
+      },
+      where: {
+        category,
+        deposit_status: status
+          ? (status as deposits_deposit_status)
+          : {
+              notIn: ["Active", "Pending", "Rejected"],
+            },
+      },
+      take: limit,
+      skip: skip,
+    });
+
+    const total = await this.databaseService.deposits.count({
+      where: {
+        deposit_status: status
+          ? (status as deposits_deposit_status)
+          : {
+              notIn: ["Active", "Pending", "Rejected"],
+            },
+      },
+    });
+
+    return {
+      status: true,
+      message: {
+        deposits,
+        total,
+      },
+    };
+  }
+
   async findDepositsByUserId(
     userid: number,
     category: string,
     limit: number,
     skip: number,
+    status: string | undefined
   ) {
     const deposits = await this.databaseService.deposits.findMany({
       orderBy: {
-        created_at: 'desc',
+        created_at: "desc",
       },
       where: {
         category,
         user_id: userid,
-        deposit_status: {
-          in: ['Active', 'Pending', 'Rejected'],
-        },
+        deposit_status: status
+          ? (status as deposits_deposit_status)
+          : {
+              in: ["Active", "Pending", "Rejected"],
+            },
       },
       take: limit,
       skip: skip,
@@ -53,9 +98,11 @@ export class DepositsService {
     const total = await this.databaseService.deposits.count({
       where: {
         user_id: userid,
-        deposit_status: {
-          in: ['Active', 'Pending', 'Rejected'],
-        },
+        deposit_status: status
+          ? (status as deposits_deposit_status)
+          : {
+              in: ["Active", "Pending", "Rejected"],
+            },
       },
     });
 
@@ -72,13 +119,13 @@ export class DepositsService {
     const pendingExists = await this.databaseService.deposits.count({
       where: {
         user_id: userid,
-        deposit_status: 'Pending',
+        deposit_status: "Pending",
       },
     });
 
     if (pendingExists > 0) {
       throw new BadRequestException(
-        'You Already have a deposit application on pending, please contact Branch.',
+        "You Already have a deposit application on pending, please contact Branch."
       );
     }
 
@@ -89,7 +136,7 @@ export class DepositsService {
     });
 
     if (!getPlan) {
-      throw new BadRequestException('Invalid Plan!');
+      throw new BadRequestException("Invalid Plan!");
     }
 
     await this.databaseService.deposits.create({
@@ -105,7 +152,7 @@ export class DepositsService {
         category: getPlan.category,
         interest_rate: Number(getPlan.interest_rate),
         premature_withdrawal_charge: Number(
-          getPlan.premature_withdrawal_charge,
+          getPlan.premature_withdrawal_charge
         ),
         allow_premature_withdrawal: getPlan.allow_premature_withdrawal,
         maturity_date: data.maturity_date,
@@ -119,13 +166,13 @@ export class DepositsService {
       },
     });
 
-    return { status: true, message: 'Deposit has been applied successfully' };
+    return { status: true, message: "Deposit has been applied successfully" };
   }
 
   async reapplyDepositByDepositId(
     userid: number,
     depositId: number,
-    data: any,
+    data: any
   ) {
     await this.databaseService.deposits.update({
       where: {
@@ -139,12 +186,12 @@ export class DepositsService {
         amount: parseFloat(data.amount),
         prefered_tenure: parseInt(data.prefered_tenure),
         nominee: data.nominee,
-        remark: '',
-        deposit_status: 'Pending',
+        remark: "",
+        deposit_status: "Pending",
       },
     });
 
-    return { status: true, message: 'Deposit has been re-applied.' };
+    return { status: true, message: "Deposit has been re-applied." };
   }
 
   async findUserDepositById(userid: number, depositId: number) {
@@ -174,12 +221,12 @@ export class DepositsService {
 
     const next_pay_date = await this.databaseService.due_record.findFirst({
       orderBy: {
-        due_date: 'asc',
+        due_date: "asc",
       },
       where: {
-        category: 'Deposit',
+        category: "Deposit",
         plan_id: deposit?.id,
-        status: 'Due',
+        status: "Due",
 
         due_date: {
           gt: new Date(new Date().setHours(0, 0, 0)),
@@ -189,11 +236,11 @@ export class DepositsService {
 
     const repayments = await this.databaseService.emi_records.findMany({
       orderBy: {
-        pay_date: 'desc',
+        pay_date: "desc",
       },
       where: {
         plan_id: deposit?.id,
-        category: 'Deposit',
+        category: "Deposit",
       },
       include: {
         collector: {
@@ -210,9 +257,9 @@ export class DepositsService {
     const emi_paid = await this.databaseService.due_record.count({
       where: {
         plan_id: deposit?.id,
-        category: 'Deposit',
+        category: "Deposit",
         status: {
-          in: ['Paid', 'PartiallyFeed'],
+          in: ["Paid", "PartiallyFeed"],
         },
       },
     });
@@ -248,7 +295,7 @@ export class DepositsService {
     const late_fee =
       Number(deposit?.amount) *
       (Number(deposit?.deposit_plan.penalty_rate) / 100);
-    const freq = this.payment_frequency[deposit?.payment_frequency ?? 'Daily'];
+    const freq = this.payment_frequency[deposit?.payment_frequency ?? "Daily"];
 
     const tommorow = new Date();
     tommorow.setHours(0, 0, 0);
@@ -256,12 +303,12 @@ export class DepositsService {
 
     const overdues = await this.databaseService.due_record.findMany({
       orderBy: {
-        due_date: 'desc',
+        due_date: "desc",
       },
       where: {
-        category: 'Deposit',
+        category: "Deposit",
         plan_id: deposit?.id,
-        status: 'Overdue',
+        status: "Overdue",
       },
     });
 
@@ -271,7 +318,7 @@ export class DepositsService {
       const differenceInMilliseconds =
         new Date().getTime() - new Date(overdues[i].due_date).getTime();
       const differenceInDays = Math.floor(
-        differenceInMilliseconds / (1000 * 60 * 60 * 24),
+        differenceInMilliseconds / (1000 * 60 * 60 * 24)
       );
       const estimated_fee = Math.floor(differenceInDays / freq) * late_fee;
 
@@ -289,13 +336,13 @@ export class DepositsService {
 
     const partiallyPaid = await this.databaseService.due_record.findMany({
       orderBy: {
-        due_date: 'desc',
+        due_date: "desc",
       },
       where: {
-        category: 'Deposit',
+        category: "Deposit",
         plan_id: deposit?.id,
         status: {
-          in: ['PartiallyPaid', 'PartiallyFeed'],
+          in: ["PartiallyPaid", "PartiallyFeed"],
         },
         due_date: {
           lt: tommorow,
@@ -309,7 +356,7 @@ export class DepositsService {
       const differenceInMilliseconds =
         new Date().getTime() - new Date(partiallyPaid[i].due_date).getTime();
       const differenceInDays = Math.floor(
-        differenceInMilliseconds / (1000 * 60 * 60 * 24),
+        differenceInMilliseconds / (1000 * 60 * 60 * 24)
       );
       const estimated_fee = Math.floor(differenceInDays / freq) * late_fee;
 
@@ -327,12 +374,12 @@ export class DepositsService {
 
     const dues = await this.databaseService.due_record.findMany({
       orderBy: {
-        due_date: 'desc',
+        due_date: "desc",
       },
       where: {
-        category: 'Deposit',
+        category: "Deposit",
         plan_id: deposit?.id,
-        status: 'Due',
+        status: "Due",
 
         due_date: {
           lt: tommorow,
@@ -354,7 +401,7 @@ export class DepositsService {
           prv_due + (Number(cur_due.emi_amount) - Number(cur_due.paid_amount))
         );
       },
-      0,
+      0
     );
 
     const partialLateFee = partiallyPaid.reduce((prv_due, cur_due) => {
@@ -389,15 +436,15 @@ export class DepositsService {
     userid: number,
     depositId: number,
     limit: number,
-    skip: number,
+    skip: number
   ) {
     const repayments = await this.databaseService.emi_records.findMany({
       orderBy: {
-        pay_date: 'desc',
+        pay_date: "desc",
       },
       where: {
         plan_id: depositId,
-        category: 'Deposit',
+        category: "Deposit",
       },
       include: {
         collector: {
@@ -414,7 +461,7 @@ export class DepositsService {
     const total = await this.databaseService.emi_records.count({
       where: {
         plan_id: depositId,
-        category: 'Deposit',
+        category: "Deposit",
       },
     });
 
@@ -431,7 +478,7 @@ export class DepositsService {
     const agents = await this.databaseService.assignments.findMany({
       where: {
         plan_id: depositid,
-        category: 'Deposit',
+        category: "Deposit",
       },
       include: {
         user: {
@@ -451,7 +498,7 @@ export class DepositsService {
     const available_agents = await this.databaseService.user.findMany({
       where: {
         id: agentId ? parseInt(agentId[0]) : undefined,
-        role: 'Agent',
+        role: "Agent",
         ac_status: true,
         AND: {
           id: {

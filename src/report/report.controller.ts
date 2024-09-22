@@ -11,52 +11,49 @@ import {
   ParseIntPipe,
   UseGuards,
   BadRequestException,
-} from '@nestjs/common';
-import { AgentService } from './agent.service';
-import { AuthGuard } from '../auth/auth.guard';
+} from "@nestjs/common";
 
-import { formateId } from 'src/utils/formateId';
-import { emi_records_category } from '@prisma/client';
-import { DatabaseService } from 'src/database/database.service';
+import { ReportService } from "./report.service";
+import { AuthGuard } from "../auth/auth.guard";
+
+import { formateId } from "src/utils/formateId";
+import { emi_records_category } from "@prisma/client";
+import { DatabaseService } from "src/database/database.service";
 
 @UseGuards(AuthGuard)
-@Controller('agent')
-export class AgentController {
+@Controller("report")
+export class ReportController {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly agentService: AgentService,
+    private readonly reportService: ReportService
   ) {}
 
-  @Get('report')
+  @Get()
   async getReport(
     @Req() req,
-    @Query('skip') skip: string | undefined,
-    @Query('limit') limit: string | undefined,
-    @Query('filter_from') filter_from: string | undefined,
-    @Query('filter_to') filter_to: string | undefined,
-    @Query('filter_collected_by') filter_collected_by: string | undefined,
-    @Query('filter_plan_type') filter_plan_type: string | undefined,
+    @Query("skip") skip: string | undefined,
+    @Query("limit") limit: string | undefined,
+    @Query("filter_from") filter_from: string | undefined,
+    @Query("filter_to") filter_to: string | undefined,
+    @Query("filter_collected_by") filter_collected_by: string | undefined,
+    @Query("filter_plan_type") filter_plan_type: string | undefined
   ) {
     const collector_id = filter_collected_by
       ? (filter_collected_by as string)?.match(/\d*\d/gm)
       : null;
 
-    if (!['Admin', 'Manager'].includes(req.user.role ?? '')) {
-      if (req.user.role !== 'Agent') {
-        throw new BadRequestException('Unauthorized');
-      }
-
+    if (["Admin", "Manager"].includes(req.user.role ?? "")) {
       const data = await this.databaseService.emi_records.findMany({
+        orderBy: {
+          pay_date: "desc",
+        },
         where: {
-          collected_by: req.user.id,
+          collected_by: collector_id ? Number(collector_id[0]) : undefined,
           category: filter_plan_type as emi_records_category,
           pay_date: {
             gte: filter_from ? new Date(filter_from as string) : undefined,
             lt: filter_to ? new Date(filter_to as string) : undefined,
           },
-        },
-        orderBy: {
-          pay_date: 'desc',
         },
         include: {
           collector: {
@@ -72,10 +69,10 @@ export class AgentController {
 
       const pending = await this.databaseService.emi_records.aggregate({
         where: {
-          collected_by: req.user.id,
+          collected_by: collector_id ? Number(collector_id[0]) : undefined,
           category: filter_plan_type as emi_records_category,
           status: {
-            notIn: ['Paid', 'Hold'],
+            notIn: ["Paid", "Hold"],
           },
           pay_date: {
             gte: filter_from ? new Date(filter_from as string) : undefined,
@@ -90,8 +87,8 @@ export class AgentController {
 
       const loan = await this.databaseService.emi_records.aggregate({
         where: {
-          category: 'Loan',
-          collected_by: req.user.id,
+          category: "Loan",
+          collected_by: collector_id ? Number(collector_id[0]) : undefined,
           pay_date: {
             gte: filter_from
               ? new Date(filter_from as string)
@@ -106,8 +103,8 @@ export class AgentController {
 
       const deposit = await this.databaseService.emi_records.aggregate({
         where: {
-          category: 'Deposit',
-          collected_by: req.user.id,
+          category: "Deposit",
+          collected_by: collector_id ? Number(collector_id[0]) : undefined,
           pay_date: {
             gte: filter_from
               ? new Date(filter_from as string)
@@ -122,7 +119,7 @@ export class AgentController {
 
       const total = await this.databaseService.emi_records.count({
         where: {
-          collected_by: req.user.id,
+          collected_by: collector_id ? Number(collector_id[0]) : undefined,
           category: filter_plan_type as emi_records_category,
           pay_date: {
             gte: filter_from ? new Date(filter_from as string) : undefined,
@@ -130,8 +127,6 @@ export class AgentController {
           },
         },
       });
-
-      console.log(total);
 
       return {
         status: true,
@@ -146,17 +141,21 @@ export class AgentController {
       };
     }
 
+    if (req.user.role !== "Agent") {
+      throw new BadRequestException("Unauthorized");
+    }
+
     const data = await this.databaseService.emi_records.findMany({
-      orderBy: {
-        pay_date: 'desc',
-      },
       where: {
-        collected_by: collector_id ? Number(collector_id[0]) : undefined,
+        collected_by: req.user.id,
         category: filter_plan_type as emi_records_category,
         pay_date: {
           gte: filter_from ? new Date(filter_from as string) : undefined,
           lt: filter_to ? new Date(filter_to as string) : undefined,
         },
+      },
+      orderBy: {
+        pay_date: "desc",
       },
       include: {
         collector: {
@@ -172,10 +171,10 @@ export class AgentController {
 
     const pending = await this.databaseService.emi_records.aggregate({
       where: {
-        collected_by: collector_id ? Number(collector_id[0]) : undefined,
+        collected_by: req.user.id,
         category: filter_plan_type as emi_records_category,
         status: {
-          notIn: ['Paid', 'Hold'],
+          notIn: ["Paid", "Hold"],
         },
         pay_date: {
           gte: filter_from ? new Date(filter_from as string) : undefined,
@@ -190,8 +189,8 @@ export class AgentController {
 
     const loan = await this.databaseService.emi_records.aggregate({
       where: {
-        category: 'Loan',
-        collected_by: collector_id ? Number(collector_id[0]) : undefined,
+        category: "Loan",
+        collected_by: req.user.id,
         pay_date: {
           gte: filter_from
             ? new Date(filter_from as string)
@@ -206,8 +205,8 @@ export class AgentController {
 
     const deposit = await this.databaseService.emi_records.aggregate({
       where: {
-        category: 'Deposit',
-        collected_by: collector_id ? Number(collector_id[0]) : undefined,
+        category: "Deposit",
+        collected_by: req.user.id,
         pay_date: {
           gte: filter_from
             ? new Date(filter_from as string)
@@ -222,7 +221,7 @@ export class AgentController {
 
     const total = await this.databaseService.emi_records.count({
       where: {
-        collected_by: collector_id ? Number(collector_id[0]) : undefined,
+        collected_by: req.user.id,
         category: filter_plan_type as emi_records_category,
         pay_date: {
           gte: filter_from ? new Date(filter_from as string) : undefined,
@@ -230,6 +229,8 @@ export class AgentController {
         },
       },
     });
+
+    console.log(total);
 
     return {
       status: true,
