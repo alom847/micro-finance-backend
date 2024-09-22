@@ -1,0 +1,24 @@
+TEST ENDPOINTS PENDING:
+
+wallet/withdarawal
+profile/update-dp
+
+loans/apply
+loans/reapply
+
+
+Module:
+
+Cron
+
+Auth
+User
+Wallet
+Kyc
+Employee
+
+Plan
+Loan
+Deposit
+Report
+Repayment

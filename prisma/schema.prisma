@@ -1,0 +1,413 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model user {
+  id                                         Int                @id @default(autoincrement())
+  phone                                      String             @unique
+  email                                      String?
+  password                                   String
+  alternate_phone                            String?
+  name                                       String
+  image                                      String?
+  role                                       role               @default(User)
+  kyc_verified                               Boolean            @default(false)
+  ac_status                                  Boolean            @default(false)
+  address                                    String?
+  mother_name                                String?
+  father_name                                String?
+  nominee_name                               String?
+  current_address                            String?
+  current_district                           String?
+  current_city                               String?
+  current_zip                                String?
+  current_state                              String?
+  district                                   String?
+  city                                       String?
+  zip                                        String?
+  state                                      String?
+  country                                    String?
+  date_of_birth                              String?
+  maritial_status                            String?
+  gender                                     String?
+  profession                                 String?
+  annual_turnover                            Decimal?           @db.Decimal(11, 2)
+  created_at                                 DateTime           @default(now())
+  permissions                                String?
+  wallets                                    wallets?
+  kyc_verifications                          kyc_verifications?
+  loans                                      loans[]            @relation("loans_user_idTouser")
+  deposits                                   deposits[]         @relation("deposits_user_idTouser")
+  emi_records_emi_records_collected_byTouser emi_records[]      @relation("emi_records_collected_byTouser")
+  assignments                                assignments[]
+  emi_records_emi_records_hold_byTouser      emi_records[]      @relation("emi_records_hold_byTouser")
+}
+
+model wallets {
+  id           Int            @id @default(autoincrement())
+  user_id      Int            @unique
+  balance      Decimal?       @default(0.0000000) @db.Decimal(20, 7)
+  created_at   DateTime       @default(now())
+  owner        user           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions transactions[]
+  withdrawals  withdrawals[]
+}
+
+model transactions {
+  id         Int                     @id @default(autoincrement())
+  wallet_id  Int
+  amount     Decimal?                @default(0.0000000) @db.Decimal(20, 7)
+  fee        Decimal?                @default(0.0000000) @db.Decimal(20, 7)
+  balance    Decimal?                @default(0.00) @db.Decimal(11, 2)
+  txn_type   transactions_txn_type   @default(Credit)
+  txn_status transactions_txn_status @default(Completed)
+  txn_note   String?
+  created_at DateTime                @default(now())
+  updated_at DateTime?
+  txn_wallet wallets                 @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+
+  @@index([wallet_id])
+}
+
+model withdrawals {
+  id         Int               @id @default(autoincrement())
+  wallet_id  Int
+  amount     Decimal?          @default(0.0000000) @db.Decimal(20, 7)
+  status     withdrawal_status @default(Pending)
+  created_at DateTime          @default(now())
+  updated_at DateTime?
+  note       String?
+  wallet     wallets           @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+
+  @@index([wallet_id])
+}
+
+model kyc_verifications {
+  id                  Int        @id @default(autoincrement())
+  user_id             Int        @unique
+  selfie              String?
+  id_proof_front      String?
+  id_proof_back       String?
+  id_proof_type       String?
+  address_proof_front String?
+  address_proof_back  String?
+  address_proof_type  String?
+  description         String?
+  status              kyc_status @default(NotFilled)
+  created_at          DateTime   @default(now())
+  address_proof_value String?
+  id_proof_value      String?
+  user                user       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model deposit_plans {
+  id                                Int        @id @default(autoincrement())
+  min_amount                        Decimal    @default(0.00) @db.Decimal(11, 2)
+  max_amount                        Decimal    @default(0.00) @db.Decimal(11, 2)
+  plan_name                         String
+  category                          String
+  interest_rate                     Decimal    @default(0.00) @db.Decimal(11, 2)
+  premature_withdrawal_charge       Decimal    @default(0.00) @db.Decimal(11, 2)
+  allow_premature_withdrawal        Boolean    @default(true)
+  allowed_interest_credit_frequency String
+  allowed_payment_frequency         String?
+  selling                           Boolean    @default(true)
+  penalty_rate                      Decimal?   @default(0.00) @db.Decimal(11, 2)
+  commission_rate                   Decimal?   @default(0.00) @db.Decimal(11, 2)
+  deposits                          deposits[]
+}
+
+model loan_plans {
+  id                       Int      @id @default(autoincrement())
+  plan_name                String
+  min_amount               Decimal  @default(0.00) @db.Decimal(11, 2)
+  max_amount               Decimal  @default(0.00) @db.Decimal(11, 2)
+  interest_rate            Decimal  @default(0.00) @db.Decimal(11, 2)
+  premature_closing_charge Decimal  @default(0.00) @db.Decimal(11, 2)
+  allow_premature_closing  Boolean  @default(true)
+  interest_frequency       String
+  allowed_emi_frequency    String
+  max_installments         Int      @default(0)
+  processing_fee           Decimal? @default(0.00) @db.Decimal(11, 2)
+  penalty_rate             Decimal? @default(0.00) @db.Decimal(11, 2)
+  commission_rate          Decimal? @default(0.00) @db.Decimal(11, 2)
+  selling                  Boolean  @default(true)
+  loans                    loans[]
+}
+
+model loans {
+  id                       Int                      @id @default(autoincrement())
+  ref_id                   Int?
+  user_id                  Int
+  plan_id                  Int
+  amount                   Decimal                  @default(0.00) @db.Decimal(11, 2)
+  total_paid               Decimal                  @default(0.00) @db.Decimal(11, 2)
+  emi_amount               Decimal                  @default(0.00) @db.Decimal(11, 2)
+  total_payable            Decimal                  @default(0.00) @db.Decimal(11, 2)
+  interest_rate            Decimal                  @default(0.00) @db.Decimal(11, 2)
+  premature_closing_charge Decimal                  @default(0.00) @db.Decimal(11, 2)
+  allow_premature_closing  Boolean                  @default(true)
+  interest_frequency       loans_interest_frequency @default(Yearly)
+  emi_frequency            loans_emi_frequency      @default(Monthly)
+  prefered_installments    Int
+  overrode_installments    Int?
+  payment_status           loans_payment_status     @default(Due)
+  loan_status              loans_loan_status        @default(Pending)
+  maturity_date            DateTime?
+  loan_date                DateTime?
+  created_at               DateTime                 @default(now())
+  remark                   String?
+  guarantor                Json?
+  last_repayment           DateTime?
+  loan_plan                loan_plans               @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  user                     user                     @relation("loans_user_idTouser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([plan_id], map: "loans_plan_id_fkey")
+  @@index([user_id], map: "loans_user_id_fkey")
+}
+
+model due_record {
+  id             Int                  @id @default(autoincrement())
+  category       emi_records_category @default(Loan)
+  plan_id        Int
+  emi_amount     Decimal
+  paid_amount    Decimal              @default(0.000000000000000000000000000000)
+  late_fee       Decimal              @default(0.000000000000000000000000000000)
+  paid_fee       Decimal              @default(0.000000000000000000000000000000)
+  due_date       DateTime
+  pay_date       DateTime?
+  status         due_record_status    @default(Due)
+  due_emi_config due_emi_config[]
+
+  @@index([plan_id])
+}
+
+model due_emi_config {
+  due_id            Int
+  emi_id            Int
+  amount            Decimal     @default(0.00) @db.Decimal(11, 2)
+  total_paid_amount Decimal     @default(0.00) @db.Decimal(11, 2)
+  late_fee          Decimal     @default(0.00) @db.Decimal(11, 2)
+  total_paid_fee    Decimal     @default(0.00) @db.Decimal(11, 2)
+  due_record        due_record  @relation(fields: [due_id], references: [id])
+  emi_record        emi_records @relation(fields: [emi_id], references: [id])
+
+  @@unique([due_id, emi_id])
+  @@index([emi_id])
+}
+
+model deposits {
+  id                          Int                                @id @default(autoincrement())
+  ref_id                      Int?
+  user_id                     Int
+  plan_id                     Int
+  amount                      Decimal                            @default(0.00) @db.Decimal(11, 2)
+  total_paid                  Decimal                            @default(0.00) @db.Decimal(11, 2)
+  category                    String
+  interest_rate               Decimal                            @default(0.00) @db.Decimal(11, 2)
+  premature_withdrawal_charge Decimal                            @default(0.00) @db.Decimal(11, 2)
+  allow_premature_withdrawal  Boolean                            @default(true)
+  interest_credit_frequency   deposits_interest_credit_frequency @default(Maturity)
+  payment_frequency           deposits_payment_frequency         @default(Onetime)
+  prefered_tenure             Int
+  maturity_date               DateTime?
+  deposit_date                DateTime?
+  created_at                  DateTime                           @default(now())
+  remark                      String?
+  nominee                     Json?
+  payment_status              deposits_payment_status            @default(Due)
+  deposit_status              deposits_deposit_status            @default(Pending)
+  deposit_plan                deposit_plans                      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  user                        user                               @relation("deposits_user_idTouser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([plan_id], map: "deposits_plan_id_fkey")
+  @@index([user_id], map: "deposits_user_id_fkey")
+}
+
+model assignments {
+  id       Int                  @id @default(autoincrement())
+  agent_id Int
+  plan_id  Int
+  category emi_records_category @default(Deposit)
+  user     user                 @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+
+  @@index([agent_id])
+}
+
+model emi_records {
+  id             Int                  @id @default(autoincrement())
+  plan_id        Int
+  category       emi_records_category @default(Loan)
+  amount         Decimal              @default(0.00) @db.Decimal(11, 2)
+  late_fee       Decimal              @default(0.00) @db.Decimal(11, 2)
+  total_paid     Decimal              @default(0.00) @db.Decimal(11, 2)
+  pay_date       DateTime             @default(now())
+  status         emi_records_status   @default(Paid)
+  remark         String?
+  created_at     DateTime             @default(now())
+  collected_by   Int?
+  hold_by        Int?
+  collector      user?                @relation("emi_records_collected_byTouser", fields: [collected_by], references: [id], onDelete: NoAction)
+  holder         user?                @relation("emi_records_hold_byTouser", fields: [hold_by], references: [id], onDelete: NoAction)
+  due_emi_config due_emi_config[]
+
+  @@index([collected_by], map: "emi_records_collected_by_fkey")
+  @@index([hold_by], map: "emi_records_hold_by_fkey")
+}
+
+model password_reset {
+  id        String   @id
+  user_id   Int      @unique
+  expirs_in DateTime
+}
+
+model otp {
+  id         Int      @id @default(autoincrement())
+  type       otp_type
+  identifier String
+  otp        String // hash
+  tmp_data   Json?
+  verified   Boolean  @default(false)
+  expirs_in  DateTime
+}
+
+model settings {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+enum role {
+  Admin
+  Manager
+  Agent
+  User
+}
+
+enum transactions_txn_type {
+  Credit
+  Debit
+  Disburshed
+  Settlement
+  PrematureClosed
+  MatureClosed
+  ApprovedWithdrawal
+}
+
+enum transactions_txn_status {
+  Pending
+  Processing
+  Completed
+  Failed
+  Rejected
+}
+
+enum withdrawal_status {
+  Pending
+  Completed
+  Rejected
+}
+
+enum kyc_status {
+  NotFilled
+  Pending
+  Rejected
+  Verified
+}
+
+enum deposits_interest_credit_frequency {
+  Daily
+  Weekly
+  Monthly
+  Quarterly
+  Yearly
+  Maturity
+}
+
+enum loans_interest_frequency {
+  Daily
+  Weekly
+  Monthly
+  Quarterly
+  Yearly
+  Maturity
+}
+
+enum deposits_payment_frequency {
+  Daily
+  Weekly
+  Monthly
+  Quarterly
+  Yearly
+  Onetime
+  Anytime
+}
+
+enum loans_emi_frequency {
+  Daily
+  Weekly
+  Monthly
+  Quarterly
+  Yearly
+  Onetime
+  Anytime
+}
+
+enum loans_payment_status {
+  Paid
+  Due
+}
+
+enum deposits_payment_status {
+  Paid
+  Due
+}
+
+enum loans_loan_status {
+  Pending
+  Approved
+  Rejected
+  Active
+  Closed
+  Settlement
+}
+
+enum deposits_deposit_status {
+  Pending
+  Approved
+  Rejected
+  Active
+  Closed
+  PrematureClosed
+}
+
+enum emi_records_category {
+  Deposit
+  Loan
+}
+
+enum emi_records_status {
+  Paid
+  Collected
+  Hold
+}
+
+enum due_record_status {
+  Due
+  Paid
+  PartiallyPaid
+  PartiallyFeed
+  Overdue
+}
+
+enum otp_type {
+  Register
+  ResetPassword
+}
