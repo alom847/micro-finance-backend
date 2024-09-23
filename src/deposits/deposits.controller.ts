@@ -135,4 +135,47 @@ export class DepositsController {
   ) {
     return this.depositsService.findAssignedAgentsByDepositId(id, agent_id);
   }
+
+  @Post(":id/approve")
+  async approve(@Req() req, @Param("id", ParseIntPipe) id) {
+    return this.depositsService.approveDepositById(req.user.id, id);
+  }
+
+  @Post(":id/reject")
+  async reject(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    return this.depositsService.rejectDepositByID(id, body.remark);
+  }
+
+  @Post(":id/assign-agent")
+  async assignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    return this.depositsService.assignAgent(id, body.agent_id);
+  }
+
+  @Delete(":id/assign-agent")
+  async unassignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    return this.depositsService.unassignAgent(id, body.agent_id);
+  }
+
+  @Post(":id/collect")
+  async collectRepayment(
+    @Req() req,
+    @Param("id", ParseIntPipe) id,
+    @Body() body
+  ) {
+    return this.depositsService.collectRepayment(req, id, body.emi_data);
+  }
+
+  @Post(":id/settle")
+  async settlement(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    return this.depositsService.settlement(req.user.id, id, body.settle_data);
+  }
+
+  @Post(":id/update-referrer")
+  async updateReferrer(
+    @Req() req,
+    @Param("id", ParseIntPipe) id,
+    @Body() body
+  ) {
+    return this.depositsService.updateReferrer(id, body.ref_id);
+  }
 }

@@ -47,6 +47,9 @@ importers:
       crypto-js:
         specifier: ^4.1.1
         version: 4.1.1
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       multer:
         specifier: 1.4.5-lts.1
         version: 1.4.5-lts.1
@@ -1742,6 +1745,9 @@ packages:
 
   crypto-js@4.1.1:
     resolution: {integrity: sha512-o2JlM7ydqd3Qk9CA0L4NL6mTzU2sdx96a+oOfPu8Mkl/PK51vSyoi8/rQ8NknZtk44vq15lmhAj9CIAGwgeWKw==}
+
+  date-fns@4.1.0:
+    resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
@@ -5831,6 +5837,8 @@ snapshots:
       which: 2.0.2
 
   crypto-js@4.1.1: {}
+
+  date-fns@4.1.0: {}
 
   debug@2.6.9:
     dependencies:

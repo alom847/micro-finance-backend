@@ -244,4 +244,7 @@ export class ReportController {
       },
     };
   }
+
+  @Get("pendings")
+  async getPendings() {}
 }

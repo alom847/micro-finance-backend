@@ -1,13 +1,4 @@
-TEST ENDPOINTS PENDING:
-
-wallet/withdarawal
-profile/update-dp
-
-loans/apply
-loans/reapply
-
-
-Module:
+Modules:
 
 Cron
 
@@ -22,3 +13,127 @@ Loan
 Deposit
 Report
 Repayment
+
+API:
+
+## Auth module
+
+POST /auth/signup
+POST /auth/verify-signup
+POST /auth/signin
+POST /auth/signout
+POST /auth/req-pwd-reset
+POST /auth/reset-pwd
+POST /auth/resend-otp
+
+## User module
+
+GET /user/profile
+POST /user/profile/update
+POST /user/profile/update-dp
+
+POST /user/settings/change-pass
+
+GET /user/assignments
+
+GET /user/referrals
+GET /user/dash-data
+
+## Wallet module
+
+GET /wallet
+GET /wallet/txns
+POST /wallet/withdrawal
+GET /wallet/withdrawals
+
+[TODO]
+
+GET /wallet/:id
+GET /wallet/:id/txns
+POST /wallet/:id/make-txn
+
+POST /wallet/approve-withdrawal
+POST /wallet/reject-withdrawal
+
+## kyc module
+
+GET /kyc
+POST /kyc/reset
+POST /kyc/update-addr-proof
+POST /kyc/update-id-proof
+POST /kyc/update-selfie
+
+GET /kyc/:id
+POST /kyc/:id/approve
+POST /kyc/:id/reject
+
+## Plan module
+
+POST GET /plans/loan
+POST GET /plans/deposit
+POST GET /plans/deposit/:id
+POST GET /plans/deposit/:id
+
+## Loan modules
+
+GET /loan
+POST /loan/apply
+
+GET /loan/:id
+GET /loan/:id/due
+GET /loan/:id/repayments
+GET /loan/:id/agents
+GET /loan/:id/reapply
+
+POST /loan/:id/approve
+POST /loan/:id/reject
+
+POST /loan/:id/collect
+POST /loan/:id/assign-agent
+DELETE /loan/:id/assign-agent
+
+POST /loan/:id/settle
+POST /loan/:id/update-referrer
+
+## Deposit modules
+
+GET /deposit
+POST /deposit/apply
+
+GET /deposit/:id
+GET /deposit/:id/due
+GET /deposit/:id/repayments
+GET /deposit/:id/agents
+GET /deposit/:id/reapply
+
+POST /deposit/:id/approve
+POST /deposit/:id/reject
+
+POST /deposit/:id/collect
+POST /deposit/:id/assign-agent
+DELETE /deposit/:id/assign-agent
+
+POST /deposit/:id/settle
+POST /loan/:id/update-referrer
+
+## Report module
+
+GET /report
+
+[TODO]
+
+GET /report/pendings
+
+GET /report/:id
+POST /report/:id/mark-as-paid
+
+## Repayment module
+
+GET /repayment/:id
+POST /repayment/:id/correction
+
+## Employee Module [TODO]
+
+Get /employee
+GET /employee/:id
+GET /employee/:update

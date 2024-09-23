@@ -15,6 +15,13 @@ import {
 } from "@prisma/client";
 import { DatabaseService } from "../database/database.service";
 import { calculateEmi, getTotalPayable } from "../utils/calculateEmi";
+import {
+  NotificationService,
+  templates,
+} from "src/notification/notification.service";
+import { formateId } from "src/utils/formateId";
+import { format } from "date-fns";
+import { showAsCurrency } from "src/utils/showAsCurrency";
 
 @Injectable()
 export class DepositsService {
@@ -28,7 +35,10 @@ export class DepositsService {
     Anytime: 1,
   };
 
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly notificationService: NotificationService
+  ) {}
 
   async fetchAllDeposits(
     category: string,
@@ -519,6 +529,546 @@ export class DepositsService {
         agents,
         available_agents,
       },
+    };
+  }
+
+  async approveDepositById(userid: number, depositid: number) {
+    await this.databaseService.$transaction(async (prisma) => {
+      // set status to active if admin else approved.
+      const data = await prisma.deposits.update({
+        where: {
+          id: depositid,
+        },
+        data: {
+          deposit_status: "Active",
+        },
+      });
+
+      if (data.category === "FD") {
+        const start_date = data?.deposit_date
+          ? new Date(data.deposit_date)
+          : new Date();
+
+        const maturity_date = new Date(start_date);
+        maturity_date.setDate(
+          maturity_date.getDate() + 30 * data.prefered_tenure
+        );
+
+        const deposit_data = await prisma.deposits.update({
+          where: {
+            id: depositid,
+          },
+          data: {
+            total_paid: data.amount,
+            maturity_date: maturity_date,
+          },
+          include: {
+            user: {
+              select: {
+                name: true,
+                phone: true,
+              },
+            },
+            deposit_plan: {
+              select: {
+                plan_name: true,
+                interest_rate: true,
+                allow_premature_withdrawal: true,
+                premature_withdrawal_charge: true,
+              },
+            },
+          },
+        });
+
+        const update_wallet = await prisma.wallets.update({
+          where: {
+            user_id: userid,
+          },
+          data: {
+            balance: {
+              increment: Number(deposit_data.amount),
+            },
+          },
+        });
+
+        const txn = await prisma.transactions.create({
+          data: {
+            wallet_id: update_wallet.id,
+            amount: Number(deposit_data.amount),
+            // fee: Number(total_fee_paid),
+            balance: update_wallet.balance,
+            txn_type: "Credit",
+            txn_status: "Completed",
+            txn_note: `FD opening (${formateId(
+              deposit_data.id,
+              deposit_data.category as "FD" | "RD"
+            )})`,
+          },
+        });
+
+        this.notificationService.sendSMS(
+          deposit_data.user.phone,
+          templates.Fixed_Deposit_Approved,
+          [
+            {
+              Key: "customer",
+              Value: deposit_data.user.name,
+            },
+            {
+              Key: "account",
+              Value: formateId(deposit_data.id, "RD"),
+            },
+            {
+              Key: "amount",
+              Value: deposit_data.amount.toFixed(2),
+            },
+            {
+              Key: "tenure",
+              Value: deposit_data.prefered_tenure.toString(),
+            },
+          ]
+        );
+      } else {
+        const pay_freq = this.payment_frequency[data.payment_frequency];
+        const start_date = data?.deposit_date
+          ? new Date(data.deposit_date)
+          : new Date();
+
+        const maturity_date = new Date(start_date);
+        maturity_date.setDate(
+          maturity_date.getDate() + 30 * data.prefered_tenure
+        );
+
+        // const repayment_schedule = [];
+
+        // for (let i = 1; i < data.prefered_tenure * 30 + 1; i += pay_freq) {
+        //   const next_pay_date = new Date(
+        //     new Date(start_date).setDate(start_date.getDate() + i * pay_freq)
+        //   );
+
+        //   repayment_schedule.push({
+        //     plan_id: data.id,
+        //     category: "Deposit",
+        //     emi_amount: data.amount,
+        //     due_date: next_pay_date,
+        //   } as due_record);
+        // }
+
+        // await prisma.due_record.createMany({
+        //   data: repayment_schedule,
+        // });
+
+        const deposit_data = await prisma.deposits.update({
+          where: {
+            id: depositid,
+          },
+          data: {
+            maturity_date: maturity_date,
+          },
+          include: {
+            user: {
+              select: {
+                name: true,
+                phone: true,
+              },
+            },
+            deposit_plan: {
+              select: {
+                plan_name: true,
+                interest_rate: true,
+                allow_premature_withdrawal: true,
+                premature_withdrawal_charge: true,
+              },
+            },
+          },
+        });
+
+        this.notificationService.sendSMS(
+          deposit_data.user.phone,
+          templates.Recurring_Deposit_Approved_Confirmation,
+          [
+            {
+              Key: "customer",
+              Value: deposit_data.user.name,
+            },
+            {
+              Key: "account",
+              Value: formateId(deposit_data.id, "RD"),
+            },
+            {
+              Key: "tenure",
+              Value: deposit_data.prefered_tenure.toString(),
+            },
+          ]
+        );
+      }
+    });
+
+    return {
+      status: true,
+      message: "Deposit has been approved successfully",
+    };
+  }
+
+  async rejectDepositByID(depositid: number, remark: string) {
+    const deposit_data = await this.databaseService.deposits.update({
+      where: {
+        id: depositid,
+      },
+      data: {
+        deposit_status: "Rejected",
+        amount: 0,
+        total_paid: 0,
+        remark: remark,
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            phone: true,
+          },
+        },
+        deposit_plan: {
+          select: {
+            plan_name: true,
+            interest_rate: true,
+            allow_premature_withdrawal: true,
+            premature_withdrawal_charge: true,
+          },
+        },
+      },
+    });
+
+    this.notificationService.sendSMS(
+      deposit_data.user.phone,
+      templates.Rejected_Reason,
+      [
+        {
+          Key: "customer",
+          Value: deposit_data.user.name,
+        },
+        {
+          Key: "reason",
+          Value: deposit_data.remark as string,
+        },
+      ]
+    );
+
+    return {
+      status: true,
+      data: deposit_data,
+    };
+  }
+
+  async collectRepayment(req, depositid: number, emi_data) {
+    const { total_paid, pay_date, remark } = emi_data;
+
+    const amount = Number(total_paid);
+
+    if (amount <= 0) {
+      throw new BadRequestException("Invalid Collection Amount.");
+    }
+
+    // let remainingAmount = amount;
+    // let remainingFeeAmount = Number(total_fee_paid);
+
+    await this.databaseService.$transaction(async (tx) => {
+      const updated_deposit = await tx.deposits.update({
+        where: {
+          id: depositid,
+        },
+        data: {
+          total_paid: {
+            increment: amount,
+          },
+        },
+        include: {
+          deposit_plan: {
+            select: {
+              commission_rate: true,
+            },
+          },
+          user: {
+            select: {
+              name: true,
+              phone: true,
+            },
+          },
+        },
+      });
+
+      const now = new Date();
+
+      const emiRecord = await tx.emi_records.create({
+        data: {
+          plan_id: depositid,
+          category: "Deposit",
+          amount: amount,
+          // late_fee: Number(total_fee_paid),
+          total_paid: updated_deposit.total_paid,
+          pay_date: new Date(
+            new Date(pay_date).setHours(
+              now.getHours(),
+              now.getMinutes(),
+              now.getSeconds()
+            )
+          ),
+          status: ["Admin", "Manager"].includes(req.user.role ?? "")
+            ? "Paid"
+            : "Collected",
+          remark,
+          collected_by: req.user.id,
+          created_at: new Date(),
+        },
+      });
+
+      if (["Admin", "Manager"].includes(req.user.role ?? "")) {
+        const update_wallet = await tx.wallets.update({
+          where: {
+            user_id: req.user.id,
+          },
+          data: {
+            balance: {
+              increment: amount,
+            },
+          },
+        });
+
+        await tx.transactions.create({
+          data: {
+            wallet_id: update_wallet.id,
+            amount: amount,
+            // fee: Number(total_fee_paid),
+            balance: update_wallet.balance,
+            txn_type: "Credit",
+            txn_status: "Completed",
+            txn_note: `Repayment from deposit (${formateId(
+              updated_deposit.id,
+              updated_deposit.category as "FD" | "RD"
+            )})`,
+          },
+        });
+      }
+
+      if (updated_deposit.ref_id) {
+        // calculate the commision amount
+        const commission_amount =
+          (amount / 100) * Number(updated_deposit.deposit_plan.commission_rate);
+
+        // get the wallet info of referrer
+        const referrer = await tx.user.findFirst({
+          where: {
+            id: Number(updated_deposit.ref_id),
+          },
+          include: {
+            wallets: true,
+          },
+        });
+
+        if (referrer && commission_amount > 0) {
+          if (!referrer.wallets) return;
+          // credit the commission amount to referrer
+          const credited_referrer_wallet = await tx.wallets.update({
+            where: {
+              id: referrer.wallets.id,
+            },
+            data: {
+              balance: {
+                increment: commission_amount,
+              },
+            },
+          });
+
+          // create a txn record for that
+          await tx.transactions.create({
+            data: {
+              wallet_id: referrer.wallets.id,
+              amount: commission_amount,
+              balance: credited_referrer_wallet.balance,
+              txn_type: "Credit",
+              txn_status: "Completed",
+              txn_note: `Commission from ${formateId(
+                updated_deposit.id,
+                "RD"
+              )}`,
+            },
+          });
+        }
+      }
+
+      this.notificationService.sendSMS(
+        updated_deposit.user.phone,
+        templates.Recurring_Deposit_Repayment,
+        [
+          {
+            Key: "customer",
+            Value: updated_deposit.user.name,
+          },
+          {
+            Key: "account",
+            Value: formateId(updated_deposit.id, "RD"),
+          },
+          {
+            Key: "amount",
+            Value: Number(emiRecord.amount).toFixed(2),
+          },
+          {
+            Key: "balance",
+            Value: Number(updated_deposit.total_paid).toFixed(2),
+          },
+          {
+            Key: "date",
+            Value: format(new Date(), "dd/MM/yyyy"),
+          },
+        ]
+      );
+    });
+
+    return {
+      status: true,
+      message: "EMI Collected Successfully.",
+    };
+  }
+
+  async assignAgent(depositid: number, agentid: number) {
+    await this.databaseService.assignments.create({
+      data: {
+        agent_id: agentid,
+        plan_id: depositid,
+        category: "Deposit",
+      },
+    });
+
+    return {
+      status: true,
+      message: "Success",
+    };
+  }
+
+  async unassignAgent(depositid: number, agentid: number) {
+    await this.databaseService.assignments.deleteMany({
+      where: {
+        agent_id: agentid,
+        plan_id: depositid,
+        category: "Deposit",
+      },
+    });
+
+    return {
+      status: true,
+      message: "Success",
+    };
+  }
+
+  async settlement(userid: number, depositid: number, settle_data) {
+    const { settle_type, settle_amount, settle_remark } = settle_data;
+
+    const updated_deposit = await this.databaseService.deposits.update({
+      where: {
+        id: depositid,
+      },
+      data: {
+        deposit_status:
+          settle_type === "premature" ? "PrematureClosed" : "Closed",
+        remark: `${settle_remark} | Total Return : ${showAsCurrency(
+          Number(settle_amount)
+        )} at ${new Date().toDateString()}`,
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    // credit the collected amount to the wallet of the collector
+    const wallet = await this.databaseService.wallets.update({
+      where: {
+        id: userid,
+      },
+      data: {
+        balance: {
+          decrement: Number(settle_amount),
+        },
+      },
+    });
+
+    // create a transaction for the collector
+    await this.databaseService.transactions.create({
+      data: {
+        amount: Number(settle_amount),
+        balance: wallet.balance,
+        txn_type:
+          settle_type === "premature" ? "PrematureClosed" : "MatureClosed",
+        txn_status: "Completed",
+        txn_note: `Deposit settlement of ${formateId(
+          updated_deposit.id,
+          "RD"
+        )}`,
+        wallet_id: wallet.id,
+      },
+    });
+
+    let template = templates.Fixed_Deposit_Maturity;
+
+    if (updated_deposit.category === "RD") {
+      template =
+        settle_type === "premature"
+          ? templates.Recurring_Deposit_Premature
+          : templates.Recurring_Deposit_Maturity;
+    } else {
+      template =
+        settle_type === "premature"
+          ? templates.Fixed_Deposit_PreMature
+          : templates.Fixed_Deposit_Maturity;
+    }
+
+    this.notificationService.sendSMS(updated_deposit.user.phone, template, [
+      {
+        Key: "customer",
+        Value: updated_deposit.user.name,
+      },
+      {
+        Key: "account",
+        Value: formateId(
+          updated_deposit.id,
+          updated_deposit.category as "RD" | "FD"
+        ),
+      },
+      {
+        Key: "amount",
+        Value: settle_amount,
+      },
+      {
+        Key: "date",
+        Value: format(new Date(), "dd/MM/yyyy"),
+      },
+    ]);
+
+    return {
+      status: true,
+      message: "Deposit Settled Successfully.",
+    };
+  }
+
+  async updateReferrer(depositid: number, refid: string) {
+    const refId = refid.match(/\d*\d/gm);
+
+    const updated_deposit = await this.databaseService.deposits.update({
+      where: {
+        id: depositid,
+      },
+      data: {
+        ref_id: refId ? parseInt(refId[0]) : undefined,
+      },
+    });
+
+    return {
+      status: true,
+      message: updated_deposit,
     };
   }
 }

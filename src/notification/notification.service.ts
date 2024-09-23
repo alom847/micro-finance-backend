@@ -1,37 +1,37 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import axios from 'axios';
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import axios from "axios";
 
-import { createTransport, Transporter, TransportOptions } from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport';
-import { map } from 'rxjs';
+import { createTransport, Transporter, TransportOptions } from "nodemailer";
+import SMTPTransport from "nodemailer/lib/smtp-transport";
+import { map } from "rxjs";
 
 export const templates = {
-  Wallet_Debit: '1407169904241372254',
-  Wallet_Credit: '1407169904219354547',
-  Loan_Repayment: '1407169973439056064',
-  Recurring_Deposit_Repayment: '1407169904372908628',
-  Fixed_Deposit_Approved: '1407169904753505516',
-  Loan_Approved_Confirmation: '1407169904496784642',
-  Recurring_Deposit_Approved_Confirmation: '1407169904310900942',
+  Wallet_Debit: "1407169904241372254",
+  Wallet_Credit: "1407169904219354547",
+  Loan_Repayment: "1407169973439056064",
+  Recurring_Deposit_Repayment: "1407169904372908628",
+  Fixed_Deposit_Approved: "1407169904753505516",
+  Loan_Approved_Confirmation: "1407169904496784642",
+  Recurring_Deposit_Approved_Confirmation: "1407169904310900942",
 
-  Recurring_Deposit_Maturity: '1407169904442133038',
-  Recurring_Deposit_Premature: '1407169904414232750',
-  Fixed_Deposit_PreMature: '1407169904781341975',
-  Fixed_Deposit_Maturity: '1407169904805690181',
+  Recurring_Deposit_Maturity: "1407169904442133038",
+  Recurring_Deposit_Premature: "1407169904414232750",
+  Fixed_Deposit_PreMature: "1407169904781341975",
+  Fixed_Deposit_Maturity: "1407169904805690181",
 
-  Loan_Closed_Confirmation: '1407169904609701891',
-  Withdrawal_Confirmed: '1407169985751037944',
-  Rejected_Reason: '1407169979808096410',
+  Loan_Closed_Confirmation: "1407169904609701891",
+  Withdrawal_Confirmed: "1407169985751037944",
+  Rejected_Reason: "1407169979808096410",
 
-  User_Create: '1407169903961175810',
-  User_Create_Confirmation: '1407169985913436678',
-  Reset_Password: '1407169904090982059',
+  User_Create: "1407169903961175810",
+  User_Create_Confirmation: "1407169985913436678",
+  Reset_Password: "1407169904090982059",
 };
 
 @Injectable()
 export class NotificationService {
   transporter: Transporter<SMTPTransport.SentMessageInfo>;
-  readonly BASE_URL = 'https://bulksms.bsnl.in:5010/api';
+  readonly BASE_URL = "https://bulksms.bsnl.in:5010/api";
 
   readonly smtp_host = process.env.SMTP_HOST;
   readonly smtp_port = process.env.SMTP_PORT;
@@ -56,12 +56,12 @@ export class NotificationService {
 
   private validateEnvironmentVariables() {
     const requiredVariables = [
-      'SMTP_HOST',
-      'SMTP_PORT',
-      'SMTP_USER',
-      'SMTP_PASS',
-      'SYSTEM_EMAIL',
-      'COMPANY_NAME',
+      "SMTP_HOST",
+      "SMTP_PORT",
+      "SMTP_USER",
+      "SMTP_PASS",
+      "SYSTEM_EMAIL",
+      "COMPANY_NAME",
     ];
 
     for (const variable of requiredVariables) {
@@ -75,10 +75,10 @@ export class NotificationService {
     try {
       const email_report = await this.transporter.sendMail({
         to: email,
-        from: '' + this.company_name + ' <' + this.system_email + '>',
-        subject: 'Please verify your email',
+        from: "" + this.company_name + " <" + this.system_email + ">",
+        subject: "Please verify your email",
         text:
-          'OTP for verifying your' + this.company_name + 'account is: ' + otp,
+          "OTP for verifying your" + this.company_name + "account is: " + otp,
         html: `
         <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
   <html xmlns="http://www.w3.org/1999/xhtml">
@@ -133,9 +133,9 @@ export class NotificationService {
     try {
       const email_report = await this.transporter.sendMail({
         to: email,
-        from: '' + this.company_name + ' <' + this.system_email + '>',
-        subject: 'Reset Your Password',
-        text: 'Link to reset your password',
+        from: "" + this.company_name + " <" + this.system_email + ">",
+        subject: "Reset Your Password",
+        text: "Link to reset your password",
         html: `
         <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
   <html xmlns="http://www.w3.org/1999/xhtml">
@@ -190,17 +190,19 @@ export class NotificationService {
   async sendSMS(
     target: string,
     template_id: string,
-    values: { Key: string; Value: string }[] = [],
+    values: { Key: string; Value: string }[] = []
   ) {
+    return true;
+
     try {
       const { data } = await axios.post(
         `${this.BASE_URL}/Send_SMS`,
         {
           Header: process.env.HEADER,
           Target: target,
-          Is_Unicode: '0',
-          Is_Flash: '0',
-          Message_Type: 'SI',
+          Is_Unicode: "0",
+          Is_Flash: "0",
+          Message_Type: "SI",
           Entity_Id: process.env.ENTITY_Id,
           Content_Template_Id: template_id,
           Consent_Template_Id: null,
@@ -210,7 +212,7 @@ export class NotificationService {
           headers: {
             Authorization: `Bearer ${process.env.BRPS_ACCESS_TOKEN}`,
           },
-        },
+        }
       );
 
       return data;
