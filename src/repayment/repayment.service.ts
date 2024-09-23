@@ -48,6 +48,8 @@ export class RepaymentService {
 
     const now = new Date();
 
+    let updated_repayment;
+
     await this.databaseService.$transaction(async (prisma) => {
       const originalEmiRecord = await prisma.emi_records.findUnique({
         where: { id: id },
@@ -64,6 +66,12 @@ export class RepaymentService {
         throw new BadRequestException("EMI record not found.");
       }
 
+      if (Number(originalEmiRecord.amount) < corrected_amount) {
+        throw new BadRequestException(
+          "Please create a new collection for the extra amount!"
+        );
+      }
+
       if (
         req.user?.role === "Agent" &&
         originalEmiRecord.status !== "Collected"
@@ -78,6 +86,7 @@ export class RepaymentService {
 
       if (originalEmiRecord.category === "Loan") {
         const updatable_due_records = [];
+
         for (const dueEmiConfig of originalEmiRecord.due_emi_config) {
           const originalDueRecord = await prisma.due_record.findUnique({
             where: { id: dueEmiConfig.due_id },
@@ -145,14 +154,6 @@ export class RepaymentService {
           }
         }
 
-        // push all emi to queue worker
-        // await axios.post(
-        //   `${process.env.QUEUE_WORKER_API_ENDPOINT}/addJobs`,
-        //   {
-        //     jobs: updatable_due_records,
-        //   }
-        // );
-
         for (const due_data of updatable_due_records) {
           await this.databaseService.due_record.update({
             where: { id: due_data.due_id },
@@ -199,7 +200,7 @@ export class RepaymentService {
       }
 
       // Update the emi_record with the corrected data
-      const updated_repayment = await prisma.emi_records.update({
+      updated_repayment = await prisma.emi_records.update({
         where: { id: originalEmiRecord.id },
         data: {
           amount: Number(corrected_amount),
@@ -294,16 +295,11 @@ export class RepaymentService {
           },
         });
       }
-
-      return {
-        status: true,
-        data: updated_repayment,
-        message: "Correction successful",
-      };
     });
 
     return {
       status: true,
+      data: updated_repayment,
       message: "Correction successful",
     };
   }
