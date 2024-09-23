@@ -6,9 +6,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  due_record,
   due_record_status,
+  loans,
   loans_emi_frequency,
   loans_interest_frequency,
+  loans_loan_status,
   Prisma,
 } from "@prisma/client";
 import { DatabaseService } from "../database/database.service";
@@ -37,16 +40,83 @@ export class LoansService {
     private readonly notificationService: NotificationService
   ) {}
 
-  async findLoansByUserId(userid: number, limit: number, skip: number) {
+  async fetchAll(skip: number, limit: number, status: string) {
+    const loans = await this.databaseService.loans.findMany({
+      orderBy: {
+        loan_date: "desc",
+      },
+      where: {
+        loan_status: status
+          ? (status as loans_loan_status)
+          : {
+              notIn: ["Pending", "Rejected"],
+            },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            phone: true,
+          },
+        },
+      },
+      take: limit,
+      skip: skip,
+    });
+
+    const loansWithDues: (loans & {
+      due: {
+        overdues: due_record[];
+        partiallyPaid: due_record[];
+        dues: due_record[];
+        totalOverdue: number;
+        totalPartialRemain: number;
+        totalDue: number;
+      };
+    })[] = [];
+
+    for (const loan of loans) {
+      const { data: due } = await this.findUserLoanDueById(loan.id);
+
+      loansWithDues.push({
+        ...loan,
+        due,
+      });
+    }
+
+    const total = await this.databaseService.loans.count({
+      where: {
+        loan_status: status
+          ? (status as loans_loan_status)
+          : {
+              notIn: ["Pending", "Rejected"],
+            },
+      },
+    });
+
+    return {
+      status: true,
+      message: {
+        loans: loansWithDues,
+        total,
+      },
+    };
+  }
+
+  async findLoansByUserId(userid: number, limit: number, skip: number, status) {
     const loans = await this.databaseService.loans.findMany({
       orderBy: {
         created_at: "desc",
       },
       where: {
         user_id: userid,
-        loan_status: {
-          in: ["Active", "Pending", "Rejected"],
-        },
+        loan_status: status
+          ? (status as loans_loan_status)
+          : {
+              in: ["Active", "Pending", "Rejected"],
+            },
       },
       take: limit,
       skip: skip,
@@ -55,9 +125,11 @@ export class LoansService {
     const total = await this.databaseService.loans.count({
       where: {
         user_id: userid,
-        loan_status: {
-          in: ["Active", "Pending", "Rejected"],
-        },
+        loan_status: status
+          ? (status as loans_loan_status)
+          : {
+              in: ["Active", "Pending", "Rejected"],
+            },
       },
     });
 
@@ -268,7 +340,7 @@ export class LoansService {
     };
   }
 
-  async findUserLoanDueById(userid: number, loanid: number) {
+  async findUserLoanDueById(loanid: number) {
     const loan = await this.databaseService.loans.findFirst({
       where: {
         id: loanid,

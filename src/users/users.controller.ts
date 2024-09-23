@@ -15,31 +15,31 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
-} from '@nestjs/common';
-import { UsersService } from './users.service';
-import { Prisma } from '@prisma/client';
-import { AuthGuard } from '../auth/auth.guard';
-import { DatabaseService } from '../database/database.service';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { StorageService } from 'src/storage/storage.service';
+} from "@nestjs/common";
+import { UsersService } from "./users.service";
+import { Prisma } from "@prisma/client";
+import { AuthGuard } from "../auth/auth.guard";
+import { DatabaseService } from "../database/database.service";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { StorageService } from "src/storage/storage.service";
 
-import * as CryptoJS from 'crypto-js';
+import * as CryptoJS from "crypto-js";
 
-import { formateId } from 'src/utils/formateId';
+import { formateId } from "src/utils/formateId";
 
 @UseGuards(AuthGuard)
-@Controller('user')
+@Controller("user")
 export class UsersController {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly usersService: UsersService,
-    private readonly storageService: StorageService,
+    private readonly storageService: StorageService
   ) {}
 
   hash(password: string): string {
     const hashedPassword = CryptoJS.AES.encrypt(
       password,
-      process.env.SALT as string,
+      process.env.SALT as string
     ).toString();
 
     return hashedPassword;
@@ -48,37 +48,50 @@ export class UsersController {
   compareHash(plainTextPassword: string, hashedPassword: string): boolean {
     const decrypted_pass = CryptoJS.AES.decrypt(
       hashedPassword,
-      process.env.SALT as string,
+      process.env.SALT as string
     ).toString(CryptoJS.enc.Utf8);
 
     return plainTextPassword === decrypted_pass;
   }
 
-  @Get('profile')
+  @Get()
+  async fetchAll(
+    @Req() req,
+    @Query("limit") limit: string | undefined,
+    @Query("skip") skip: string | undefined
+  ) {
+    return this.usersService.findAll(
+      req.user.id,
+      parseInt(limit ?? "10"),
+      parseInt(skip ?? "0")
+    );
+  }
+
+  @Get("profile")
   async profile(@Req() req) {
     return this.usersService.findOneById(req.user.id);
   }
 
-  @Post('profile/update')
+  @Post("profile/update")
   updateProfile(@Req() req, @Body() userUpdateInput: Prisma.userUpdateInput) {
     if (req.user.ac_status) {
       throw new BadRequestException(
-        "Can't make any changes, after account has been approved.",
+        "Can't make any changes, after account has been approved."
       );
     }
 
     return this.usersService.update(req.user.id, userUpdateInput);
   }
 
-  @Post('profile/update-dp')
-  @UseInterceptors(FileInterceptor('profile_img'))
+  @Post("profile/update-dp")
+  @UseInterceptors(FileInterceptor("profile_img"))
   async updateProfilePic(
     @Req() req,
-    @UploadedFile() profile_img: Express.Multer.File,
+    @UploadedFile() profile_img: Express.Multer.File
   ) {
     if (req.user.ac_status) {
       throw new BadRequestException(
-        "Can't make any changes, after account has been approved.",
+        "Can't make any changes, after account has been approved."
       );
     }
 
@@ -87,23 +100,23 @@ export class UsersController {
     try {
       const image_url = await this.storageService.upload(
         profile_img.originalname,
-        profile_img.buffer,
+        profile_img.buffer
       );
 
       return this.usersService.updateProfilePic(req.user.id, image_url);
     } catch (error) {
-      return { error: 'Failed to upload file', details: error.message };
+      return { error: "Failed to upload file", details: error.message };
     }
   }
 
-  @Post('settings/change-pass')
+  @Post("settings/change-pass")
   async changePassword(@Req() req, @Body() body) {
     if (body.new_pass !== body.confirm) {
-      throw new BadRequestException('Password did not matched!');
+      throw new BadRequestException("Password did not matched!");
     }
 
     if (body.new_pass.length < 6) {
-      throw new BadRequestException('Password must be atleast 6 char long!');
+      throw new BadRequestException("Password must be atleast 6 char long!");
     }
 
     const user = await this.databaseService.user.findFirst({
@@ -115,7 +128,7 @@ export class UsersController {
     const hashedPassword = this.hash(body.new_pass as string);
 
     if (!this.compareHash(body.old_pass, user.password)) {
-      throw new BadRequestException('Old Password did not matched!');
+      throw new BadRequestException("Old Password did not matched!");
     }
 
     await this.databaseService.user.update({
@@ -129,11 +142,11 @@ export class UsersController {
 
     return {
       status: true,
-      message: 'Password has been changed Successfully.',
+      message: "Password has been changed Successfully.",
     };
   }
 
-  @Get('referrals')
+  @Get("referrals")
   async referrals(@Req() req) {
     const deposits = await this.databaseService.deposits.aggregate({
       _sum: {
@@ -144,7 +157,7 @@ export class UsersController {
       },
       where: {
         ref_id: req.user.id,
-        deposit_status: 'Active',
+        deposit_status: "Active",
       },
     });
 
@@ -157,14 +170,14 @@ export class UsersController {
       },
       where: {
         ref_id: req.user.id,
-        loan_status: 'Active',
+        loan_status: "Active",
       },
     });
 
     const deposit_refs = await this.databaseService.deposits.findMany({
       where: {
         ref_id: req.user.id,
-        deposit_status: 'Active',
+        deposit_status: "Active",
       },
       select: {
         id: true,
@@ -177,7 +190,7 @@ export class UsersController {
     const loan_refs = await this.databaseService.loans.findMany({
       where: {
         ref_id: req.user.id,
-        loan_status: 'Active',
+        loan_status: "Active",
       },
       select: {
         id: true,
@@ -189,22 +202,22 @@ export class UsersController {
     const referrals: {
       id: string;
       amount: number;
-      category: 'Loan' | 'Deposit';
+      category: "Loan" | "Deposit";
     }[] = [];
 
     loan_refs.map((loan) => {
       referrals.push({
-        id: formateId(loan.id, 'Loan'),
+        id: formateId(loan.id, "Loan"),
         amount: Number(loan.total_payable) - Number(loan.total_paid),
-        category: 'Loan',
+        category: "Loan",
       });
     });
 
     deposit_refs.map((deposit) => {
       referrals.push({
-        id: formateId(deposit.id, deposit.category as 'RD' | 'FD'),
+        id: formateId(deposit.id, deposit.category as "RD" | "FD"),
         amount: Number(deposit.total_paid),
-        category: 'Deposit',
+        category: "Deposit",
       });
     });
 
@@ -224,9 +237,9 @@ export class UsersController {
     };
   }
 
-  @Get('dash-data')
+  @Get("dash-data")
   async dashData(@Req() req) {
-    if (!['Admin', 'Manager'].includes(req.user.role ?? '')) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
       const deposits = await this.databaseService.deposits.aggregate({
         _sum: {
           total_paid: true,
@@ -236,7 +249,7 @@ export class UsersController {
         },
         where: {
           user_id: req.user.id,
-          deposit_status: 'Active',
+          deposit_status: "Active",
         },
       });
 
@@ -250,7 +263,7 @@ export class UsersController {
         },
         where: {
           user_id: req.user.id,
-          loan_status: 'Active',
+          loan_status: "Active",
         },
       });
 
@@ -302,23 +315,23 @@ export class UsersController {
         amount: true,
       },
       where: {
-        deposit_status: 'Active',
+        deposit_status: "Active",
       },
     });
 
     const deposit_paid_today = await this.databaseService.emi_records.aggregate(
       {
         where: {
-          category: 'Deposit',
+          category: "Deposit",
           OR: [
             {
-              status: 'Paid',
+              status: "Paid",
             },
             {
-              status: 'Collected',
+              status: "Collected",
             },
             {
-              status: 'Hold',
+              status: "Hold",
             },
           ],
           created_at: {
@@ -329,7 +342,7 @@ export class UsersController {
         _sum: {
           amount: true,
         },
-      },
+      }
     );
 
     const loans = await this.databaseService.loans.aggregate({
@@ -341,22 +354,22 @@ export class UsersController {
         amount: true,
       },
       where: {
-        loan_status: 'Active',
+        loan_status: "Active",
       },
     });
 
     const loan_paid_today = await this.databaseService.emi_records.aggregate({
       where: {
-        category: 'Loan',
+        category: "Loan",
         OR: [
           {
-            status: 'Paid',
+            status: "Paid",
           },
           {
-            status: 'Collected',
+            status: "Collected",
           },
           {
-            status: 'Hold',
+            status: "Hold",
           },
         ],
         created_at: {
@@ -371,8 +384,8 @@ export class UsersController {
 
     const loan_due_today = await this.databaseService.due_record.aggregate({
       where: {
-        category: 'Loan',
-        status: 'Due',
+        category: "Loan",
+        status: "Due",
         due_date: {
           gte: new Date(new Date(new Date().setHours(0))),
           lte: new Date(new Date(new Date().setHours(24))),
@@ -385,8 +398,8 @@ export class UsersController {
 
     const deposit_due_today = await this.databaseService.due_record.aggregate({
       where: {
-        category: 'Deposit',
-        status: 'Due',
+        category: "Deposit",
+        status: "Due",
         due_date: {
           gte: new Date(new Date(new Date().setHours(0))),
           lte: new Date(new Date(new Date().setHours(24))),
@@ -417,10 +430,10 @@ export class UsersController {
         },
         txn_type: {
           in: [
-            'Disburshed',
-            'MatureClosed',
-            'PrematureClosed',
-            'ApprovedWithdrawal',
+            "Disburshed",
+            "MatureClosed",
+            "PrematureClosed",
+            "ApprovedWithdrawal",
           ],
         },
       },
@@ -433,7 +446,7 @@ export class UsersController {
       where: {
         owner: {
           role: {
-            in: ['Admin', 'Manager'],
+            in: ["Admin", "Manager"],
           },
         },
       },
@@ -469,21 +482,26 @@ export class UsersController {
     };
   }
 
-  @Get('assignments')
+  @Get("assignments")
   async findAssignments(
     @Req() req,
-    @Query('type') type: string,
-    @Query('skip') skip: string | undefined,
-    @Query('limit') limit: string | undefined,
+    @Query("type") type: string,
+    @Query("skip") skip: string | undefined,
+    @Query("limit") limit: string | undefined
   ) {
-    if (req.user.role !== 'Agent')
-      throw new BadRequestException('Unauthorized');
+    if (req.user.role !== "Agent")
+      throw new BadRequestException("Unauthorized");
 
     return this.usersService.findAssignments(
       req.user.id,
       type,
-      parseInt(limit ?? '10'),
-      parseInt(skip ?? '0'),
+      parseInt(limit ?? "10"),
+      parseInt(skip ?? "0")
     );
+  }
+
+  @Get(":id")
+  async getUser(@Req() req, @Param("id", ParseIntPipe) id) {
+    return this.usersService.findUserDetails(id);
   }
 }

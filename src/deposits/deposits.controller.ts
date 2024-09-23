@@ -41,15 +41,6 @@ export class DepositsController {
     @Query("skip") skip: string | undefined,
     @Query("status") status: string | undefined
   ) {
-    if (["Admin", "Manager"].includes(req.user.role ?? "")) {
-      return this.depositsService.fetchAllDeposits(
-        category,
-        parseInt(limit ?? "10"),
-        parseInt(skip ?? "0"),
-        status
-      );
-    }
-
     return this.depositsService.findDepositsByUserId(
       req.user.id,
       category,

@@ -12,82 +12,83 @@ import {
   ParseIntPipe,
   Param,
   BadRequestException,
-} from '@nestjs/common';
-import { AuthGuard } from '../auth/auth.guard';
+} from "@nestjs/common";
+import { AuthGuard } from "../auth/auth.guard";
 import {
   FileFieldsInterceptor,
   FileInterceptor,
   FilesInterceptor,
-} from '@nestjs/platform-express';
-import { StorageService } from 'src/storage/storage.service';
+} from "@nestjs/platform-express";
+import { StorageService } from "src/storage/storage.service";
 
-import { KycsService } from './kycs.service';
-import { skip } from 'node:test';
+import { KycsService } from "./kycs.service";
+import { skip } from "node:test";
 
 @UseGuards(AuthGuard)
-@Controller('kyc')
+@Controller("kyc")
 export class KycsController {
   constructor(
     private readonly kycService: KycsService,
-    private readonly storageService: StorageService,
+    private readonly storageService: StorageService
   ) {}
 
   @Get()
   getKyc(
     @Req() req,
-    @Query('limit') limit: string | undefined,
-    @Query('skip') skip: string | undefined,
-    @Query('status') status: string | undefined,
+    @Query("limit") limit: string | undefined,
+    @Query("skip") skip: string | undefined,
+    @Query("scope") scope: string | undefined,
+    @Query("status") status: string | undefined
   ) {
-    if (['Admin', 'Manager'].includes(req.user.role ?? '')) {
+    if (scope === "all" && ["Admin", "Manager"].includes(req.user.role ?? "")) {
       return this.kycService.fetchKycs(
-        parseInt(limit ?? '10'),
-        parseInt(skip ?? '0'),
-        status,
+        parseInt(limit ?? "10"),
+        parseInt(skip ?? "0"),
+        status
       );
     }
 
     return this.kycService.findKycByUserId(req.user.id);
   }
 
-  @Get(':id')
-  async fetchKycById(@Req() req, @Param('id', ParseIntPipe) id) {
-    if (!['Admin', 'Manager'].includes(req.user.role ?? '')) {
-      throw new BadRequestException('Unauthorized');
+  @Get(":id")
+  async fetchKycById(@Req() req, @Param("id", ParseIntPipe) id) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
     }
 
     return this.kycService.fetchKycById(id);
   }
 
-  @Post(':id/approve')
-  async approveKycById(@Req() req, @Param('id', ParseIntPipe) id) {
-    if (!['Admin', 'Manager'].includes(req.user.role ?? '')) {
-      throw new BadRequestException('Unauthorized');
+  @Post(":id/approve")
+  async approveKycById(@Req() req, @Param("id", ParseIntPipe) id) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
     }
 
     return this.kycService.approveKycById(id);
   }
 
-  @Post(':id/reject')
-  async rejectKycById(@Req() req, @Param('id', ParseIntPipe) id) {
-    if (!['Admin', 'Manager'].includes(req.user.role ?? '')) {
-      throw new BadRequestException('Unauthorized');
+  @Post(":id/reject")
+  async rejectKycById(@Req() req, @Param("id", ParseIntPipe) id) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
     }
 
     return this.kycService.rejectKycById(id);
   }
 
-  @Post('/reset')
+  @Post("/reset")
   resetKyc(@Req() req) {
     return this.kycService.restKycByUserId(req.user.id);
   }
 
-  @Post('/update-addr-proof')
+  @Post("/update-addr-proof")
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'address_proof_front', maxCount: 1 },
-      { name: 'address_proof_back', maxCount: 1 },
-    ]),
+      { name: "address_proof_front", maxCount: 1 },
+      { name: "address_proof_back", maxCount: 1 },
+    ])
   )
   async updateAddressProof(
     @Req() req,
@@ -96,17 +97,17 @@ export class KycsController {
       address_proof_front?: Express.Multer.File[];
       address_proof_back?: Express.Multer.File[];
     },
-    @Body() body: { address_proof_type: string; address_proof_value: string },
+    @Body() body: { address_proof_type: string; address_proof_value: string }
   ) {
     try {
       const address_proof_front_url = await this.storageService.upload(
         files.address_proof_front[0].originalname,
-        files.address_proof_front[0].buffer,
+        files.address_proof_front[0].buffer
       );
 
       const address_proof_back_url = await this.storageService.upload(
         files.address_proof_back[0].originalname,
-        files.address_proof_back[0].buffer,
+        files.address_proof_back[0].buffer
       );
 
       return this.kycService.updateAddressProof(
@@ -114,19 +115,19 @@ export class KycsController {
         address_proof_front_url,
         address_proof_back_url,
         body.address_proof_type,
-        body.address_proof_value,
+        body.address_proof_value
       );
     } catch (error) {
-      return { error: 'Failed to upload file', details: error.message };
+      return { error: "Failed to upload file", details: error.message };
     }
   }
 
-  @Post('/update-id-proof')
+  @Post("/update-id-proof")
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'id_proof_front', maxCount: 1 },
-      { name: 'id_proof_back', maxCount: 1 },
-    ]),
+      { name: "id_proof_front", maxCount: 1 },
+      { name: "id_proof_back", maxCount: 1 },
+    ])
   )
   async updateIdProof(
     @Req() req,
@@ -135,17 +136,17 @@ export class KycsController {
       id_proof_front?: Express.Multer.File[];
       id_proof_back?: Express.Multer.File[];
     },
-    @Body() body: { id_proof_type: string; id_proof_value: string },
+    @Body() body: { id_proof_type: string; id_proof_value: string }
   ) {
     try {
       const id_proof_front_url = await this.storageService.upload(
         files.id_proof_front[0].originalname,
-        files.id_proof_front[0].buffer,
+        files.id_proof_front[0].buffer
       );
 
       const id_proof_back_url = await this.storageService.upload(
         files.id_proof_back[0].originalname,
-        files.id_proof_back[0].buffer,
+        files.id_proof_back[0].buffer
       );
 
       return this.kycService.updateIdProof(
@@ -153,27 +154,27 @@ export class KycsController {
         id_proof_front_url,
         id_proof_back_url,
         body.id_proof_type,
-        body.id_proof_value,
+        body.id_proof_value
       );
     } catch (error) {
-      return { error: 'Failed to upload file', details: error.message };
+      return { error: "Failed to upload file", details: error.message };
     }
   }
 
-  @Post('/update-selfie')
-  @UseInterceptors(FileInterceptor('selfie'))
+  @Post("/update-selfie")
+  @UseInterceptors(FileInterceptor("selfie"))
   async uploadSelfie(@Req() req, @UploadedFile() selfie: Express.Multer.File) {
     console.log(selfie);
 
     try {
       const selfie_url = await this.storageService.upload(
         selfie.originalname,
-        selfie.buffer,
+        selfie.buffer
       );
 
       return this.kycService.updateSelfie(req.user.id, selfie_url);
     } catch (error) {
-      return { error: 'Failed to upload file', details: error.message };
+      return { error: "Failed to upload file", details: error.message };
     }
   }
 }

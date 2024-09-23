@@ -246,5 +246,139 @@ export class ReportController {
   }
 
   @Get("pendings")
-  async getPendings() {}
+  async getPendings(
+    @Req() req,
+    @Query("limit") limit: string | undefined,
+    @Query("skip") skip: string | undefined
+  ) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    const data = await this.databaseService.emi_records.groupBy({
+      by: ["collected_by"],
+      orderBy: {
+        collected_by: "desc",
+      },
+      where: {
+        status: {
+          notIn: ["Paid", "Hold"],
+        },
+      },
+      _sum: {
+        amount: true,
+        late_fee: true,
+      },
+      take: parseInt(limit ?? "10"),
+      skip: parseInt(skip ?? "0"),
+    });
+
+    const txns = await this.getUsers(data);
+
+    const pending = await this.databaseService.emi_records.aggregate({
+      where: {
+        status: {
+          notIn: ["Paid", "Hold"],
+        },
+      },
+      _sum: {
+        amount: true,
+        late_fee: true,
+      },
+    });
+
+    return {
+      status: true,
+      data: {
+        txns: txns,
+        pending: Number(pending._sum.amount) + Number(pending._sum.late_fee),
+      },
+    };
+  }
+
+  @Post("mark-paid")
+  async markAsPaid(@Req() req, @Body() body) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    const total_collection_amount =
+      await this.databaseService.emi_records.aggregate({
+        where: {
+          collected_by: body.id,
+          status: "Collected",
+        },
+        _sum: {
+          amount: true,
+          late_fee: true,
+        },
+      });
+
+    const updated_wallet = await this.databaseService.wallets.update({
+      where: {
+        user_id: req.user.id,
+      },
+      data: {
+        balance: {
+          increment:
+            Number(total_collection_amount._sum.amount) +
+            Number(total_collection_amount._sum.late_fee),
+        },
+      },
+    });
+
+    // create a txn for that
+    const txn = await this.databaseService.transactions.create({
+      data: {
+        wallet_id: updated_wallet.id,
+        amount: total_collection_amount._sum.amount,
+        fee: total_collection_amount._sum.late_fee,
+        balance: Number(updated_wallet.balance),
+        txn_type: "Credit",
+        txn_status: "Completed",
+        txn_note: `Collection from agent (${formateId(
+          Number(body.id),
+          "User"
+        )})`,
+      },
+    });
+
+    // update the emi status to paid
+    await this.databaseService.emi_records.updateMany({
+      where: {
+        collected_by: parseInt(body.id as string),
+        status: "Collected",
+      },
+      data: {
+        status: "Hold",
+        hold_by: req.user.id,
+      },
+    });
+
+    return {
+      status: 200,
+      message: "Marked As Paid!",
+    };
+  }
+
+  private async getUsers(txns: any) {
+    const txnsWithUser = [];
+
+    for (let i = 0; i < txns.length; i++) {
+      const user = await this.databaseService.user.findFirst({
+        where: {
+          id: txns[i].collected_by,
+        },
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
+      });
+
+      txnsWithUser.push({ ...txns[i], user: user });
+    }
+
+    return txnsWithUser;
+  }
 }

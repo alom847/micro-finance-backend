@@ -3,11 +3,11 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { due_record, loans, Prisma } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { DatabaseService } from '../database/database.service';
-import { LoansService } from 'src/loans/loans.service';
+} from "@nestjs/common";
+import { due_record, loans, Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { DatabaseService } from "../database/database.service";
+import { LoansService } from "src/loans/loans.service";
 
 @Injectable()
 export class UsersService {
@@ -28,70 +28,50 @@ export class UsersService {
       if (e instanceof PrismaClientKnownRequestError) {
         const constraint = e.meta.target; // Extract the constraint name
 
-        if (constraint[0] === 'phone') {
+        if (constraint[0] === "phone") {
           throw new HttpException(
-            'Phone is already in use.',
-            HttpStatus.CONFLICT,
+            "Phone is already in use.",
+            HttpStatus.CONFLICT
           );
-        } else if (constraint[0] === 'email') {
+        } else if (constraint[0] === "email") {
           throw new HttpException(
-            'Email is already in use.',
-            HttpStatus.CONFLICT,
+            "Email is already in use.",
+            HttpStatus.CONFLICT
           );
         }
       }
 
       throw new HttpException(
-        'Something went wrong',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Something went wrong",
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async findAll(
-    limit: string,
-    skip: string,
-    filterBy: undefined | string,
-    filterValue: undefined | string,
-  ) {
-    const users = await this.databaseService.user.findMany({
-      where: {
-        phone:
-          filterBy === 'phone'
-            ? {
-                contains: filterValue,
-              }
-            : undefined,
-        name:
-          filterBy === 'name'
-            ? {
-                contains: filterValue,
-              }
-            : undefined,
-      },
-      take: parseInt(limit),
-      skip: parseInt(skip),
-      select: {
-        id: true,
-        password: true,
-        phone: true,
-        email: true,
-        name: true,
-        image: true,
-        role: true,
-        ac_status: true,
-        kyc_verified: true,
-        permissions: true,
-      },
-    });
-
+  async findAll(userid: number, limit: number, skip: number) {
     const total = await this.databaseService.user.count();
+
+    const users = await this.databaseService.user.findMany({
+      orderBy: {
+        created_at: "desc",
+      },
+      where: {
+        id: {
+          not: userid,
+        },
+        role: {
+          notIn: ["Admin"],
+        },
+      },
+      take: limit,
+      skip: skip,
+    });
 
     return {
       status: true,
       data: {
-        users,
-        total,
+        users: users,
+        total: total,
       },
     };
   }
@@ -248,17 +228,17 @@ export class UsersService {
       if (e instanceof PrismaClientKnownRequestError) {
         const constraint = e.meta.target; // Extract the constraint name
 
-        if (constraint[0] === 'username') {
+        if (constraint[0] === "username") {
           throw new HttpException(
-            'Username is already taken',
-            HttpStatus.CONFLICT,
+            "Username is already taken",
+            HttpStatus.CONFLICT
           );
         }
       }
 
       throw new HttpException(
-        'Something went wrong',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Something went wrong",
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -276,12 +256,12 @@ export class UsersService {
 
       return {
         status: true,
-        message: 'Success',
+        message: "Success",
       };
     } catch (er) {
       throw new HttpException(
-        'Something went wrong',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Something went wrong",
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -290,31 +270,31 @@ export class UsersService {
     userid: number,
     type: string,
     limit: number,
-    skip: number,
+    skip: number
   ) {
-    if (type === 'Deposit') {
+    if (type === "Deposit") {
       const assignment_records =
         await this.databaseService.assignments.findMany({
           where: {
             agent_id: userid,
-            category: 'Deposit',
+            category: "Deposit",
           },
         });
 
       if (assignment_records.length > 0) {
         const assignments = assignment_records.map(
-          (deposit) => deposit.plan_id,
+          (deposit) => deposit.plan_id
         );
 
         const deposits = await this.databaseService.deposits.findMany({
           orderBy: {
-            deposit_date: 'desc',
+            deposit_date: "desc",
           },
           where: {
             id: {
               in: assignments,
             },
-            deposit_status: 'Active',
+            deposit_status: "Active",
           },
           include: {
             user: {
@@ -335,7 +315,7 @@ export class UsersService {
             id: {
               in: assignments,
             },
-            deposit_status: 'Active',
+            deposit_status: "Active",
           },
         });
 
@@ -352,7 +332,7 @@ export class UsersService {
         await this.databaseService.assignments.findMany({
           where: {
             agent_id: userid,
-            category: 'Loan',
+            category: "Loan",
           },
         });
 
@@ -361,13 +341,13 @@ export class UsersService {
 
         const loans = await this.databaseService.loans.findMany({
           orderBy: {
-            loan_date: 'desc',
+            loan_date: "desc",
           },
           where: {
             id: {
               in: assignments,
             },
-            loan_status: 'Active',
+            loan_status: "Active",
           },
           include: {
             user: {
@@ -408,7 +388,7 @@ export class UsersService {
             id: {
               in: assignments,
             },
-            loan_status: 'Active',
+            loan_status: "Active",
           },
         });
 
@@ -445,28 +425,28 @@ export class UsersService {
 
     const [overdues, partiallyPaid, dues] = await Promise.all([
       this.databaseService.due_record.findMany({
-        orderBy: { due_date: 'desc' },
+        orderBy: { due_date: "desc" },
         where: {
           plan_id: loan_id,
-          category: 'Loan',
-          status: 'Overdue',
+          category: "Loan",
+          status: "Overdue",
         },
       }),
       this.databaseService.due_record.findMany({
-        orderBy: { due_date: 'desc' },
+        orderBy: { due_date: "desc" },
         where: {
           plan_id: loan_id,
-          category: 'Loan',
-          status: { in: ['PartiallyPaid', 'PartiallyFeed'] },
+          category: "Loan",
+          status: { in: ["PartiallyPaid", "PartiallyFeed"] },
           due_date: { lt: tommorow },
         },
       }),
       this.databaseService.due_record.findMany({
-        orderBy: { due_date: 'desc' },
+        orderBy: { due_date: "desc" },
         where: {
           plan_id: loan_id,
-          category: 'Loan',
-          status: 'Due',
+          category: "Loan",
+          status: "Due",
           due_date: { lt: tommorow },
         },
       }),
@@ -529,17 +509,17 @@ export class UsersService {
     // when late fee will be introduced use updated_overdues
     const totalOverdue = overdues.reduce(
       (total, due) => total + Number(due.emi_amount),
-      0,
+      0
     );
     // when late fee will be introduced use updated_partial_dues
     const totalPartialRemain = partiallyPaid.reduce(
       (total, due) =>
         total + (Number(due.emi_amount) - Number(due.paid_amount)),
-      0,
+      0
     );
     const totalDue = dues.reduce(
       (total, due) => total + Number(due.emi_amount),
-      0,
+      0
     );
 
     return {
@@ -549,6 +529,70 @@ export class UsersService {
       totalOverdue,
       totalPartialRemain,
       totalDue,
+    };
+  }
+
+  async findUserDetails(userid: number) {
+    const user = await this.databaseService.user.findFirst({
+      where: {
+        id: userid,
+      },
+      include: {
+        kyc_verifications: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    const loans = await this.databaseService.loans.count({
+      where: {
+        user_id: user?.id,
+        loan_status: "Active",
+      },
+    });
+
+    const loan_amount = await this.databaseService.loans.aggregate({
+      where: {
+        user_id: user?.id,
+        loan_status: "Active",
+      },
+      _sum: {
+        total_paid: true,
+        total_payable: true,
+      },
+    });
+
+    const deposits = await this.databaseService.deposits.count({
+      where: {
+        user_id: user?.id,
+        deposit_status: "Active",
+      },
+    });
+
+    const deposit_amount = await this.databaseService.deposits.aggregate({
+      where: {
+        user_id: user?.id,
+        deposit_status: "Active",
+      },
+      _sum: {
+        total_paid: true,
+      },
+    });
+
+    return {
+      status: true,
+      data: {
+        ...user,
+        loans: loans,
+        deposits: deposits,
+        loan_amount:
+          Number(loan_amount._sum.total_payable) -
+          Number(loan_amount._sum.total_paid),
+        deposit_amount: deposit_amount._sum.total_paid,
+      },
     };
   }
 }

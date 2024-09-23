@@ -40,12 +40,27 @@ export class LoansController {
   findLoans(
     @Req() req,
     @Query("limit") limit: string | undefined,
-    @Query("skip") skip: string | undefined
+    @Query("skip") skip: string | undefined,
+    @Query("scope") scope: string | undefined,
+    @Query("status") status: string | undefined
   ) {
+    if (scope === "all") {
+      if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+        throw new BadRequestException("Unauthorized");
+      }
+
+      return this.loansService.fetchAll(
+        parseInt(skip ?? "0"),
+        parseInt(limit ?? "10"),
+        status
+      );
+    }
+
     return this.loansService.findLoansByUserId(
       req.user.id,
       parseInt(limit ?? "10"),
-      parseInt(skip ?? "0")
+      parseInt(skip ?? "0"),
+      status
     );
   }
 
@@ -101,7 +116,7 @@ export class LoansController {
 
   @Get(":id/due")
   async getLoanDue(@Req() req, @Param("id", ParseIntPipe) id) {
-    return this.loansService.findUserLoanDueById(req.user.id, id);
+    return this.loansService.findUserLoanDueById(id);
   }
 
   @Post(":id/reapply")

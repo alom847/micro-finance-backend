@@ -27,7 +27,7 @@ export class WalletController {
 
   @Get()
   async wallet(@Request() req) {
-    const { data: wallet } = await this.walletService.getWalletByUserId(
+    const { data: wallet } = await this.walletService.findWalletByUserId(
       req.user.id
     );
 
@@ -56,15 +56,22 @@ export class WalletController {
   }
 
   @Get("txns")
-  transactions(
+  async txns(
     @Request() req,
-    @Query("limit") limit: string = "10",
-    @Query("skip") skip: string = "0"
+    @Query("limit") limit: string | undefined = "10",
+    @Query("skip") skip: string | undefined = "0",
+    @Query("filter_from") filter_from: string | undefined = undefined,
+    @Query("filter_to") filter_to: string | undefined = undefined,
+    @Query("filter_txn_type")
+    filter_txn_type: "All" | "Credit" | "Debit" = "All"
   ) {
     return this.walletService.findTransactionsByUserId(
       req.user.id,
-      limit,
-      skip
+      parseInt(limit),
+      parseInt(skip),
+      filter_from,
+      filter_to,
+      filter_txn_type
     );
   }
 
@@ -100,15 +107,30 @@ export class WalletController {
     );
   }
 
-  // @Get(':id/')
-  // async findWalletById() {
+  @Get(":id/")
+  async findWalletById(@Param("id", ParseIntPipe) id) {
+    return this.walletService.findWalletByUserId(id);
+  }
 
-  // }
-
-  // @Get(':id/txns')
-  // async findWalletTransactionById() {
-  //   return
-  // }
+  @Get(":id/txns")
+  async findWalletTransactionByUserId(
+    @Param("id", ParseIntPipe) id,
+    @Query("limit") limit: string | undefined = "10",
+    @Query("skip") skip: string | undefined = "0",
+    @Query("filter_from") filter_from: string | undefined = undefined,
+    @Query("filter_to") filter_to: string | undefined = undefined,
+    @Query("filter_txn_type")
+    filter_txn_type: "All" | "Credit" | "Debit" = "All"
+  ) {
+    return this.walletService.findTransactionsByUserId(
+      id,
+      parseInt(limit),
+      parseInt(skip),
+      filter_from,
+      filter_to,
+      filter_txn_type
+    );
+  }
 
   // @Post('')
   // async makeWalletTransaction() {
