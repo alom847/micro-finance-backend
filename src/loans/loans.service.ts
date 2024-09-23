@@ -824,12 +824,9 @@ export class LoansService {
     }
 
     // push all emi to queue worker
-
-    updatable_due_records.map(async (due_data) => {
+    for (const due_data of updatable_due_records) {
       await this.databaseService.due_record.update({
-        where: {
-          id: due_data.id,
-        },
+        where: { id: due_data.due_id },
         data: {
           paid_amount: due_data.paid_amount,
           paid_fee: due_data.paid_fee,
@@ -869,7 +866,7 @@ export class LoansService {
           },
         },
       });
-    });
+    }
 
     // await axios.post(`${process.env.QUEUE_WORKER_API_ENDPOINT}/addJobs`, {
     //   jobs: updatable_due_records,

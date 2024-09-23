@@ -14,6 +14,7 @@ import { NotificationModule } from "./notification/notification.module";
 import { SettingsModule } from "./settings/settings.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ReportModule } from "./report/report.module";
+import { RepaymentModule } from "./repayment/repayment.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ReportModule } from "./report/report.module";
     WalletModule,
     KycsModule,
     ReportModule,
+    RepaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

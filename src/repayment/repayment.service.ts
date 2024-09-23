@@ -153,11 +153,9 @@ export class RepaymentService {
         //   }
         // );
 
-        updatable_due_records.map(async (due_data) => {
+        for (const due_data of updatable_due_records) {
           await this.databaseService.due_record.update({
-            where: {
-              id: due_data.id,
-            },
+            where: { id: due_data.due_id },
             data: {
               paid_amount: due_data.paid_amount,
               paid_fee: due_data.paid_fee,
@@ -197,7 +195,7 @@ export class RepaymentService {
               },
             },
           });
-        });
+        }
       }
 
       // Update the emi_record with the corrected data
