@@ -234,6 +234,13 @@ export class UsersService {
             HttpStatus.CONFLICT
           );
         }
+
+        if (constraint[0] === "phone") {
+          throw new HttpException(
+            "Phone number is already in use",
+            HttpStatus.CONFLICT
+          );
+        }
       }
 
       throw new HttpException(
@@ -594,5 +601,77 @@ export class UsersService {
         deposit_amount: deposit_amount._sum.total_paid,
       },
     };
+  }
+
+  async updateUserByUserId(uid: number, data) {
+    try {
+      const updated_user = await this.databaseService.user.update({
+        where: {
+          id: uid,
+        },
+        data: {
+          name: data.name,
+          father_name: data.father_name,
+          mother_name: data.mother_name,
+          nominee_name: data.nominee_name,
+
+          email: data.email,
+          phone: data.phone,
+          alternate_phone: data.alternate_phone,
+
+          gender: data.gender,
+          date_of_birth: data.date_of_birth,
+          maritial_status: data.maritial_status,
+          profession: data.profession,
+          annual_turnover: data.annual_turnover,
+
+          address: data.address,
+          current_address: data.current_address,
+
+          district: data.district,
+          city: data.city,
+          state: data.state,
+          zip: data.zip,
+
+          current_district: data.current_district,
+          current_city: data.current_city,
+          current_state: data.current_state,
+          current_zip: data.current_zip,
+
+          country: data.country,
+
+          role: data.role,
+          ac_status: data.ac_status,
+        },
+      });
+
+      return {
+        status: true,
+        data: updated_user,
+      };
+    } catch (e) {
+      if (e instanceof PrismaClientKnownRequestError) {
+        const constraint = e.meta.target; // Extract the constraint name
+
+        if (constraint[0] === "username") {
+          throw new HttpException(
+            "Username is already taken",
+            HttpStatus.CONFLICT
+          );
+        }
+
+        if (constraint[0] === "phone") {
+          throw new HttpException(
+            "Phone number is already in use",
+            HttpStatus.CONFLICT
+          );
+        }
+      }
+
+      throw new HttpException(
+        "Something went wrong",
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

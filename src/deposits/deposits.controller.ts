@@ -39,8 +39,22 @@ export class DepositsController {
     @Query("category") category: string,
     @Query("limit") limit: string | undefined,
     @Query("skip") skip: string | undefined,
+    @Query("scope") scope: string | undefined,
     @Query("status") status: string | undefined
   ) {
+    if (scope === "all") {
+      if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+        throw new BadRequestException("Unauthorized");
+      }
+
+      return this.depositsService.fetchAll(
+        category,
+        parseInt(limit ?? "10"),
+        parseInt(skip ?? "0"),
+        status
+      );
+    }
+
     return this.depositsService.findDepositsByUserId(
       req.user.id,
       category,
@@ -142,7 +156,7 @@ export class DepositsController {
     return this.depositsService.assignAgent(id, body.agent_id);
   }
 
-  @Delete(":id/assign-agent")
+  @Post(":id/unassign-agent")
   async unassignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.depositsService.unassignAgent(id, body.agent_id);
   }

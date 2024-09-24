@@ -43,9 +43,31 @@ export class WalletController {
         },
       });
 
+      const wallets = await this.databaseService.wallets.findMany({
+        where: {
+          owner: {
+            role: { in: ["Admin", "Manager"] },
+          },
+        },
+        select: {
+          id: true,
+          balance: true,
+          owner: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
       return {
         status: true,
-        data: { ...wallet, company_balance: company_balance._sum.balance },
+        data: {
+          ...wallet,
+          wallets,
+          company_balance: company_balance._sum.balance,
+        },
       };
     }
 
@@ -63,7 +85,7 @@ export class WalletController {
     @Query("filter_from") filter_from: string | undefined = undefined,
     @Query("filter_to") filter_to: string | undefined = undefined,
     @Query("filter_txn_type")
-    filter_txn_type: "All" | "Credit" | "Debit" = "All"
+    filter_txn_type: string | undefined
   ) {
     return this.walletService.findTransactionsByUserId(
       req.user.id,
@@ -120,7 +142,7 @@ export class WalletController {
     @Query("filter_from") filter_from: string | undefined = undefined,
     @Query("filter_to") filter_to: string | undefined = undefined,
     @Query("filter_txn_type")
-    filter_txn_type: "All" | "Credit" | "Debit" = "All"
+    filter_txn_type: string | undefined
   ) {
     return this.walletService.findTransactionsByUserId(
       id,
@@ -132,8 +154,19 @@ export class WalletController {
     );
   }
 
-  // @Post('')
-  // async makeWalletTransaction() {
-
-  // }
+  @Post(":id/make-txn")
+  async makeWalletTransaction(
+    @Request() req,
+    @Param("id", ParseIntPipe) id,
+    @Body() body
+  ) {
+    return this.walletService.makeTransaction(
+      req,
+      id,
+      body.amount,
+      body.type,
+      body.date,
+      body.remark
+    );
+  }
 }

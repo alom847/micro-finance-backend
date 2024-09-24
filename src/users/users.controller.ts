@@ -15,6 +15,7 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
+  InternalServerErrorException,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { Prisma } from "@prisma/client";
@@ -26,6 +27,10 @@ import { StorageService } from "src/storage/storage.service";
 import * as CryptoJS from "crypto-js";
 
 import { formateId } from "src/utils/formateId";
+import {
+  NotificationService,
+  templates,
+} from "src/notification/notification.service";
 
 @UseGuards(AuthGuard)
 @Controller("user")
@@ -33,7 +38,8 @@ export class UsersController {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly usersService: UsersService,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly notificationService: NotificationService
   ) {}
 
   hash(password: string): string {
@@ -58,8 +64,27 @@ export class UsersController {
   async fetchAll(
     @Req() req,
     @Query("limit") limit: string | undefined,
-    @Query("skip") skip: string | undefined
+    @Query("skip") skip: string | undefined,
+    @Query("status") status: string | undefined
   ) {
+    if (status === "Pending") {
+      const tempAccounts = await this.databaseService.otp.findMany({
+        where: {
+          verified: true,
+        },
+      });
+
+      const accounts = tempAccounts.map((account) => account.tmp_data);
+
+      return {
+        status: true,
+        data: {
+          users: accounts,
+          total: accounts.length,
+        },
+      };
+    }
+
     return this.usersService.findAll(
       req.user.id,
       parseInt(limit ?? "10"),
@@ -74,7 +99,7 @@ export class UsersController {
 
   @Post("profile/update")
   updateProfile(@Req() req, @Body() userUpdateInput: Prisma.userUpdateInput) {
-    if (req.user.ac_status) {
+    if (req.user.role !== "Admin" && req.user.ac_status) {
       throw new BadRequestException(
         "Can't make any changes, after account has been approved."
       );
@@ -89,7 +114,7 @@ export class UsersController {
     @Req() req,
     @UploadedFile() profile_img: Express.Multer.File
   ) {
-    if (req.user.ac_status) {
+    if (req.user.role !== "Admin" && req.user.ac_status) {
       throw new BadRequestException(
         "Can't make any changes, after account has been approved."
       );
@@ -503,5 +528,110 @@ export class UsersController {
   @Get(":id")
   async getUser(@Req() req, @Param("id", ParseIntPipe) id) {
     return this.usersService.findUserDetails(id);
+  }
+
+  @Post(":id/update")
+  async updateUser(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    return this.usersService.updateUserByUserId(id, body);
+  }
+
+  @Post(":id/change-pwd")
+  async ChangeUserPwd(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    if (!(body.password && (body.password as string).length >= 6)) {
+      throw new BadRequestException(
+        "Password must be atleast 6 chracters long"
+      );
+    }
+
+    const hash_password = CryptoJS.AES.encrypt(
+      body.password,
+      process.env.SALT as string
+    ).toString();
+
+    await this.databaseService.user.update({
+      where: {
+        id: id,
+      },
+      data: {
+        password: hash_password,
+      },
+    });
+
+    return {
+      status: true,
+      message: "success",
+    };
+  }
+
+  @Post("approve")
+  async approve(@Req() req, @Body() body) {
+    const signup_request = await this.databaseService.otp.findFirst({
+      where: {
+        verified: true,
+        identifier: body.phone,
+      },
+    });
+
+    const registration_data = signup_request.tmp_data as Prisma.JsonObject;
+
+    const decrypted_password = CryptoJS.AES.decrypt(
+      registration_data.password as string,
+      process.env.SALT as string
+    ).toString(CryptoJS.enc.Utf8);
+
+    await this.databaseService.otp.deleteMany({
+      where: {
+        identifier: signup_request.identifier,
+      },
+    });
+
+    const { data: user } = await this.usersService.create({
+      phone: signup_request.identifier,
+      email: registration_data?.email as string,
+      password: registration_data?.password as string,
+      name: registration_data?.name as string,
+    });
+
+    if (!user) {
+      throw new InternalServerErrorException("Unable to create an account.");
+    }
+
+    this.notificationService.sendSMS(
+      signup_request.identifier,
+      templates.User_Create_Confirmation,
+      [
+        {
+          Key: "customer",
+          Value: registration_data?.name as string,
+        },
+        {
+          Key: "password",
+          Value: decrypted_password,
+        },
+        {
+          Key: "username",
+          Value: signup_request.identifier,
+        },
+      ]
+    );
+
+    return {
+      status: true,
+      message: "success",
+    };
+  }
+
+  @Post("reject")
+  async reject(@Req() req, @Body() body) {
+    await this.databaseService.otp.deleteMany({
+      where: {
+        identifier: body.phone,
+      },
+    });
+
+    return {
+      status: true,
+      message: "success",
+    };
   }
 }

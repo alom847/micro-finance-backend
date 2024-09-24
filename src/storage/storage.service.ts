@@ -1,14 +1,14 @@
-import { Global, Injectable, NestInterceptor } from '@nestjs/common';
+import { Global, Injectable, NestInterceptor } from "@nestjs/common";
 // import * as multer from 'multer';
 // import * as multerS3 from 'multer-s3';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import sharp from 'sharp';
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import * as sharp from "sharp";
 
 @Injectable()
 export class StorageService {
-  private readonly REGION = 'ap-south-1';
-  private readonly BUCKET = 'himalayan-microfin';
-  private readonly FOLDER = 'images';
+  private readonly REGION = "ap-south-1";
+  private readonly BUCKET = "himalayan-microfin";
+  private readonly FOLDER = "images";
 
   private readonly s3 = new S3Client({
     region: this.REGION,
@@ -35,15 +35,18 @@ export class StorageService {
 
   async upload(fileName: string, file: Buffer) {
     const optimizedImage = await this.optimizeImage(file); // Optimize the image
-    const key = this.FOLDER + '/' + Date.now().toString() + '-' + fileName;
+
+    console.log(optimizedImage);
+
+    const key = this.FOLDER + "/" + Date.now().toString() + "-" + fileName;
 
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.BUCKET,
-        ACL: 'public-read',
+        ACL: "public-read",
         Key: key,
         Body: optimizedImage,
-      }),
+      })
     );
 
     const fileUrl = `https://${this.BUCKET}.s3.${this.REGION}.amazonaws.com/${key}`;
@@ -52,9 +55,11 @@ export class StorageService {
   }
 
   private async optimizeImage(file: Buffer): Promise<Buffer> {
+    console.log(file);
+
     return sharp(file)
       .resize(512, 512, {
-        fit: 'inside', // Resizes to fit within the 1024x1024 box
+        fit: "inside", // Resizes to fit within the 1024x1024 box
         withoutEnlargement: true, // Won't enlarge smaller images
       })
       .jpeg({ quality: 60 }) // Compress to 80% quality in JPEG format

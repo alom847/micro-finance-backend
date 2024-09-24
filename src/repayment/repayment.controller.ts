@@ -21,7 +21,7 @@ import { emi_records_category } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
 
 @UseGuards(AuthGuard)
-@Controller("repayment")
+@Controller("repayments")
 export class RepaymentController {
   constructor(
     private readonly databaseService: DatabaseService,

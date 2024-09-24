@@ -220,7 +220,6 @@ export class LoansService {
     const loan_data = await this.databaseService.loans.findFirst({
       where: {
         id: loanid,
-        user_id: userid,
       },
     });
 

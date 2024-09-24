@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
-import { kyc_status, kyc_verifications } from '@prisma/client';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { DatabaseService } from "../database/database.service";
+import { kyc_status, kyc_verifications } from "@prisma/client";
 
 @Injectable()
 export class KycsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async fetchKycs(limit: number, skip: number, status: string = 'Verified') {
+  async fetchKycs(limit: number, skip: number, status: string = "Verified") {
     const kycs = await this.databaseService.kyc_verifications.findMany({
       orderBy: {
-        created_at: 'desc',
+        created_at: "desc",
       },
       take: limit,
       skip: skip,
@@ -46,6 +46,8 @@ export class KycsService {
       },
     });
 
+    if (!kyc) throw new NotFoundException("kyc not found");
+
     return { status: true, data: kyc };
   }
 
@@ -62,7 +64,7 @@ export class KycsService {
         address_proof_front: null,
         address_proof_back: null,
         selfie: null,
-        status: 'NotFilled',
+        status: "NotFilled",
       },
     });
 
@@ -88,7 +90,7 @@ export class KycsService {
         id: kid,
       },
       data: {
-        status: 'Verified',
+        status: "Verified",
         user: {
           update: {
             kyc_verified: true,
@@ -109,7 +111,7 @@ export class KycsService {
         id: kid,
       },
       data: {
-        status: 'Rejected',
+        status: "Rejected",
         user: {
           update: {
             kyc_verified: true,
@@ -129,7 +131,7 @@ export class KycsService {
     address_proof_front_url: string,
     address_proof_back_url: string,
     address_proof_type: string,
-    address_proof_value: string,
+    address_proof_value: string
   ) {
     const kyc = await this.databaseService.kyc_verifications.upsert({
       where: { user_id: userid },
@@ -156,7 +158,7 @@ export class KycsService {
     id_proof_front_url: string,
     id_proof_back_url: string,
     id_proof_type: string,
-    id_proof_value: string,
+    id_proof_value: string
   ) {
     const kyc = await this.databaseService.kyc_verifications.upsert({
       where: { user_id: userid },
@@ -183,12 +185,12 @@ export class KycsService {
       where: { user_id: userid },
       update: {
         selfie: selfie_url,
-        status: 'Pending',
+        status: "Pending",
       },
       create: {
         user_id: userid,
         selfie: selfie_url,
-        status: 'Pending',
+        status: "Pending",
       },
     });
 

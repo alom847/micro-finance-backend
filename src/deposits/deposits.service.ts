@@ -40,7 +40,7 @@ export class DepositsService {
     private readonly notificationService: NotificationService
   ) {}
 
-  async fetchAllDeposits(
+  async fetchAll(
     category: string,
     limit: number,
     skip: number,
@@ -55,8 +55,11 @@ export class DepositsService {
         deposit_status: status
           ? (status as deposits_deposit_status)
           : {
-              notIn: ["Active", "Pending", "Rejected"],
+              notIn: ["Pending", "Rejected"],
             },
+      },
+      include: {
+        user: true,
       },
       take: limit,
       skip: skip,
@@ -67,14 +70,14 @@ export class DepositsService {
         deposit_status: status
           ? (status as deposits_deposit_status)
           : {
-              notIn: ["Active", "Pending", "Rejected"],
+              notIn: ["Pending", "Rejected"],
             },
       },
     });
 
     return {
       status: true,
-      message: {
+      data: {
         deposits,
         total,
       },

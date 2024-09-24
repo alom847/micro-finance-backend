@@ -15,6 +15,8 @@ import { SettingsModule } from "./settings/settings.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ReportModule } from "./report/report.module";
 import { RepaymentModule } from "./repayment/repayment.module";
+import { EmployeeModule } from "./employee/employee.module";
+import { SearchModule } from "./search/search.module";
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { RepaymentModule } from "./repayment/repayment.module";
     KycsModule,
     ReportModule,
     RepaymentModule,
+    EmployeeModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

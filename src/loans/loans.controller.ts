@@ -136,24 +136,35 @@ export class LoansController {
     @Param("id", ParseIntPipe) id,
     @Body() body
   ) {
-    if (!req.user.ac_status) {
-      throw new BadRequestException("your account is not active.");
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      if (!req.user.ac_status) {
+        throw new BadRequestException("your account is not active.");
+      }
+
+      if (!req.user.kyc_verified) {
+        throw new BadRequestException("Please get your KYC verified.");
+      }
     }
 
-    if (!req.user.kyc_verified) {
-      throw new BadRequestException("Please get your KYC verified.");
-    }
+    console.log(body);
 
     try {
-      const standard_form_url = await this.storageService.upload(
-        files.standard_form[0].originalname,
-        files.standard_form[0].buffer
-      );
+      let standard_form_url;
+      let guarantor_photo_url;
 
-      const guarantor_photo_url = await this.storageService.upload(
-        files.guarantor_photo[0].originalname,
-        files.guarantor_photo[0].buffer
-      );
+      if (files.standard_form) {
+        standard_form_url = await this.storageService.upload(
+          files.standard_form[0].originalname,
+          files.standard_form[0].buffer
+        );
+      }
+
+      if (files.guarantor_photo) {
+        guarantor_photo_url = await this.storageService.upload(
+          files.guarantor_photo[0].originalname,
+          files.guarantor_photo[0].buffer
+        );
+      }
 
       return this.loansService.reapplyLoanByLoanId(req.user.id, id, {
         ...body,
@@ -161,6 +172,7 @@ export class LoansController {
         guarantor_photo_url,
       });
     } catch (error) {
+      console.log(error);
       return { error: "Failed to upload file", details: error.message };
     }
   }
@@ -204,7 +216,7 @@ export class LoansController {
     return this.loansService.assignAgent(id, body.agent_id);
   }
 
-  @Delete(":id/assign-agent")
+  @Post(":id/unassign-agent")
   async unassignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.loansService.unassignAgent(id, body.agent_id);
   }
@@ -229,6 +241,8 @@ export class LoansController {
     @Param("id", ParseIntPipe) id,
     @Body() body
   ) {
+    console.log(body);
+
     return this.loansService.updateReferrer(id, body.ref_id);
   }
 }

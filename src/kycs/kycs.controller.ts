@@ -25,7 +25,7 @@ import { KycsService } from "./kycs.service";
 import { skip } from "node:test";
 
 @UseGuards(AuthGuard)
-@Controller("kyc")
+@Controller("kycs")
 export class KycsController {
   constructor(
     private readonly kycService: KycsService,

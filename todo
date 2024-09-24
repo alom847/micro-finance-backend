@@ -46,8 +46,6 @@ GET /wallet/txns
 POST /wallet/withdrawal
 GET /wallet/withdrawals
 
-[TODO]
-
 GET /wallet/:id
 GET /wallet/:id/txns
 POST /wallet/:id/make-txn
@@ -119,21 +117,25 @@ POST /loan/:id/update-referrer
 ## Report module
 
 GET /report
-
-[TODO]
-
 GET /report/pendings
 
 GET /report/:id
-POST /report/:id/mark-as-paid
+POST /report/:id/mark-paid
 
 ## Repayment module
 
 GET /repayment/:id
 POST /repayment/:id/correction
 
-## Employee Module [TODO]
+## Employee
 
 Get /employee
 GET /employee/:id
 GET /employee/:update
+
+
+
+
+// add permission check and authorizations
+
+// EDIT LOAN/DEPOSIT APPLICATION
