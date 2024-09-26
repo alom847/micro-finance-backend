@@ -15,13 +15,18 @@ import {
   Prisma,
 } from "@prisma/client";
 import { DatabaseService } from "../database/database.service";
-import { calculateEmi, getTotalPayable } from "../utils/calculateEmi";
+import {
+  calculateEmi,
+  calculateEmiWithOverrode,
+  getTotalPayable,
+} from "../utils/calculateEmi";
 import { formateId } from "src/utils/formateId";
 import {
   NotificationService,
   templates,
 } from "src/notification/notification.service";
 import { format } from "date-fns";
+import { JsonValue } from "@prisma/client/runtime/library";
 
 @Injectable()
 export class LoansService {
@@ -270,6 +275,78 @@ export class LoansService {
     });
 
     return { status: true, message: "Loan has been applied successfully" };
+  }
+
+  async UpdateLoanByLoanId(loanid: number, data: any) {
+    console.log(data);
+
+    const loan_data = await this.databaseService.loans.findFirst({
+      where: {
+        id: loanid,
+      },
+    });
+
+    if (!loan_data) throw new BadRequestException("Invalid Loan");
+
+    const emi_amount = calculateEmiWithOverrode(
+      parseFloat(data.principal_amount as string),
+      Number(loan_data.interest_rate),
+      parseInt(data.prefered_installments as string),
+      parseInt(data.overrode_installments as string),
+      loan_data.interest_frequency as string,
+      loan_data.emi_frequency as string
+    );
+
+    const total_payable = getTotalPayable(
+      parseFloat(data.principal_amount as string),
+      Number(loan_data.interest_rate),
+      parseInt(data.prefered_installments as string),
+      loan_data.interest_frequency as string,
+      loan_data.emi_frequency as string
+    );
+
+    const refId = (data.referral_id as string).match(/\d*\d/gm);
+
+    const updatedLoan = await this.databaseService.loans.update({
+      where: {
+        id: loan_data.id,
+      },
+      data: {
+        ref_id: refId ? parseInt(refId[0]) : undefined,
+        plan_id: parseInt(data.plan_id),
+        amount: parseFloat(data.principal_amount as string),
+        total_paid: 0,
+        emi_amount: emi_amount,
+        total_payable: total_payable,
+        prefered_installments: parseInt(data.prefered_installments as string),
+        overrode_installments: parseInt(data.overrode_installments as string),
+        loan_date: new Date(data.loan_date),
+        guarantor: {
+          photo:
+            data.guarantor_photo_url ?? (loan_data.guarantor as any)?.photo,
+          photo_location:
+            data.guarantor_photo_url ??
+            (loan_data.guarantor as any)?.photo_location,
+          standard_form:
+            data.standard_form_url ??
+            (loan_data.guarantor as any)?.standard_form,
+          standard_form_location:
+            data.standard_form_url ??
+            (loan_data.guarantor as any)?.standard_form_location,
+          name: data.guarantor_name,
+          phone: data.guarantor_phone,
+          address: data.guarantor_address,
+          relationship: data.guarantor_relationship,
+          serial: data.serial,
+        },
+      },
+    });
+
+    return {
+      status: true,
+      message: "Loan has been updated successfully",
+      data: updatedLoan,
+    };
   }
 
   async findUserLoanById(userid: number, loanid: number) {

@@ -279,6 +279,8 @@ export class UsersService {
     limit: number,
     skip: number
   ) {
+    console.log("here");
+
     if (type === "Deposit") {
       const assignment_records =
         await this.databaseService.assignments.findMany({

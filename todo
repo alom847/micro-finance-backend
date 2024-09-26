@@ -135,7 +135,7 @@ GET /employee/:update
 
 
 
-
 // add permission check and authorizations
-
+// agent assignments on web not showing
 // EDIT LOAN/DEPOSIT APPLICATION
+// setup cron jobs

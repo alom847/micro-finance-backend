@@ -42,7 +42,7 @@ export class NotificationService {
   readonly company_name = process.env.COMPANY_NAME;
 
   constructor() {
-    this.validateEnvironmentVariables();
+    // this.validateEnvironmentVariables();
     this.transporter = createTransport({
       host: this.smtp_host,
       port: this.smtp_port,

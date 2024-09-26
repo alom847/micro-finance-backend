@@ -24,13 +24,14 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { StorageService } from "src/storage/storage.service";
 
 import { DepositsService } from "./deposits.service";
+import { UsersService } from "src/users/users.service";
 
 @UseGuards(AuthGuard)
 @Controller("deposits")
 export class DepositsController {
   constructor(
     private readonly depositsService: DepositsService,
-    private readonly storageService: StorageService
+    private readonly userSerice: UsersService
   ) {}
 
   @Get()
@@ -44,6 +45,15 @@ export class DepositsController {
   ) {
     if (scope === "all") {
       if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+        if (req.user.role === "Agent") {
+          return this.userSerice.findAssignments(
+            req.user.id,
+            "Deposit",
+            parseInt(limit ?? "10"),
+            parseInt(skip ?? "0")
+          );
+        }
+
         throw new BadRequestException("Unauthorized");
       }
 

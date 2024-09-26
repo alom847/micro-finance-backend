@@ -27,13 +27,15 @@ import {
 import { StorageService } from "src/storage/storage.service";
 
 import { LoansService } from "./loans.service";
+import { UsersService } from "src/users/users.service";
 
 @UseGuards(AuthGuard)
 @Controller("loans")
 export class LoansController {
   constructor(
     private readonly loansService: LoansService,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly userService: UsersService
   ) {}
 
   @Get()
@@ -46,6 +48,15 @@ export class LoansController {
   ) {
     if (scope === "all") {
       if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+        if (req.user.role === "Agent") {
+          return this.userService.findAssignments(
+            req.user.id,
+            "Loan",
+            parseInt(limit ?? "10"),
+            parseInt(skip ?? "0")
+          );
+        }
+
         throw new BadRequestException("Unauthorized");
       }
 
@@ -146,6 +157,62 @@ export class LoansController {
       }
     }
 
+    try {
+      let standard_form_url;
+      let guarantor_photo_url;
+
+      if (files.standard_form) {
+        standard_form_url = await this.storageService.upload(
+          files.standard_form[0].originalname,
+          files.standard_form[0].buffer
+        );
+      }
+
+      if (files.guarantor_photo) {
+        guarantor_photo_url = await this.storageService.upload(
+          files.guarantor_photo[0].originalname,
+          files.guarantor_photo[0].buffer
+        );
+      }
+
+      return this.loansService.reapplyLoanByLoanId(req.user.id, id, {
+        ...body,
+        standard_form_url,
+        guarantor_photo_url,
+      });
+    } catch (error) {
+      console.log(error);
+      return { error: "Failed to upload file", details: error.message };
+    }
+  }
+
+  @Post(":id/update")
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: "guarantor_photo", maxCount: 1 },
+      { name: "standard_form", maxCount: 1 },
+    ])
+  )
+  async updateLoanByLoanId(
+    @Req() req,
+    @UploadedFiles()
+    files: {
+      guarantor_photo?: Express.Multer.File[];
+      standard_form?: Express.Multer.File[];
+    },
+    @Param("id", ParseIntPipe) id,
+    @Body() body
+  ) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      if (!req.user.ac_status) {
+        throw new BadRequestException("your account is not active.");
+      }
+
+      if (!req.user.kyc_verified) {
+        throw new BadRequestException("Please get your KYC verified.");
+      }
+    }
+
     console.log(body);
 
     try {
@@ -166,7 +233,7 @@ export class LoansController {
         );
       }
 
-      return this.loansService.reapplyLoanByLoanId(req.user.id, id, {
+      return this.loansService.UpdateLoanByLoanId(id, {
         ...body,
         standard_form_url,
         guarantor_photo_url,
@@ -242,6 +309,10 @@ export class LoansController {
     @Body() body
   ) {
     console.log(body);
+
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
 
     return this.loansService.updateReferrer(id, body.ref_id);
   }
