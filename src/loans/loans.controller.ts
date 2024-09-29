@@ -204,13 +204,15 @@ export class LoansController {
     @Body() body
   ) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
-      if (!req.user.ac_status) {
-        throw new BadRequestException("your account is not active.");
-      }
+      // if (!req.user.ac_status) {
+      //   throw new BadRequestException("your account is not active.");
+      // }
 
-      if (!req.user.kyc_verified) {
-        throw new BadRequestException("Please get your KYC verified.");
-      }
+      // if (!req.user.kyc_verified) {
+      //   throw new BadRequestException("Please get your KYC verified.");
+      // }
+
+      throw new BadRequestException("Unauthorized");
     }
 
     console.log(body);

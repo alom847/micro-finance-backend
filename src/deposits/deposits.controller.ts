@@ -100,12 +100,14 @@ export class DepositsController {
     @Param("id", ParseIntPipe) id,
     @Body() body
   ) {
-    if (!req.user.ac_status) {
-      throw new BadRequestException("your account is not active.");
-    }
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      if (!req.user.ac_status) {
+        throw new BadRequestException("your account is not active.");
+      }
 
-    if (!req.user.kyc_verified) {
-      throw new BadRequestException("Please get your KYC verified.");
+      if (!req.user.kyc_verified) {
+        throw new BadRequestException("Please get your KYC verified.");
+      }
     }
 
     try {
@@ -120,6 +122,15 @@ export class DepositsController {
   @Get(":id")
   async findDeposit(@Req() req, @Param("id", ParseIntPipe) id) {
     return this.depositsService.findUserDepositById(req.user.id, id);
+  }
+
+  @Post(":id/update")
+  async updateDeposit(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
+    if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    return this.depositsService.updateDepositById(id, body);
   }
 
   @Get(":id/due")

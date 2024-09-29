@@ -77,7 +77,7 @@ export class DepositsService {
 
     return {
       status: true,
-      data: {
+      message: {
         deposits,
         total,
       },
@@ -205,6 +205,35 @@ export class DepositsService {
     });
 
     return { status: true, message: "Deposit has been re-applied." };
+  }
+
+  async updateDepositById(depositId: number, data: any) {
+    const deposit_data = await this.databaseService.deposits.findFirst({
+      where: {
+        id: depositId,
+      },
+    });
+
+    if (!deposit_data) throw new BadRequestException("Invalid Deposit");
+
+    await this.databaseService.deposits.update({
+      where: {
+        id: depositId,
+      },
+      data: {
+        ref_id: data.ref_id
+          ? parseInt(data.ref_id.match(/\d*\d/gm)[0])
+          : undefined,
+        amount: data.amount ? parseFloat(data.amount) : undefined,
+        deposit_date: new Date(data.deposit_date),
+        prefered_tenure: data.prefered_tenure
+          ? parseInt(data.prefered_tenure)
+          : undefined,
+        nominee: data.nominee,
+      },
+    });
+
+    return { status: true, message: "Deposit has been updated." };
   }
 
   async findUserDepositById(userid: number, depositId: number) {
