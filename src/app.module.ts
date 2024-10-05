@@ -17,6 +17,7 @@ import { ReportModule } from "./report/report.module";
 import { RepaymentModule } from "./repayment/repayment.module";
 import { EmployeeModule } from "./employee/employee.module";
 import { SearchModule } from "./search/search.module";
+import { CronModule } from "./cron/cron.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SearchModule } from "./search/search.module";
     DatabaseModule,
     StorageModule,
     NotificationModule,
+    CronModule,
     AuthModule,
     UsersModule,
     SettingsModule,

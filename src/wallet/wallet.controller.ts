@@ -104,6 +104,10 @@ export class WalletController {
     @Query("limit") limit: string = "10",
     @Query("skip") skip: string = "0"
   ) {
+    if (["Admin", "Manager"].includes(req.user.role ?? "")) {
+      return this.walletService.findWithdrawals(src, limit, skip);
+    }
+
     return this.walletService.findWithdrawalsByUserId(req.user.id, limit, skip);
   }
 
@@ -129,7 +133,25 @@ export class WalletController {
     );
   }
 
-  @Get(":id/")
+  @Post("withdrawals/approve")
+  async approveWithdrawalById(@Request() req, @Body() body) {
+    if (!["Admin", "Manager"].includes(req.user.role)) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    return this.walletService.approveWithdrawalById(req, body.id, body.note);
+  }
+
+  @Post("withdrawals/reject")
+  async rejectWithdrawalById(@Request() req, @Body() body) {
+    if (!["Admin", "Manager"].includes(req.user.role)) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    return this.walletService.rejectWithdrawalById(body.id, body.note);
+  }
+
+  @Get(":id")
   async findWalletById(@Param("id", ParseIntPipe) id) {
     return this.walletService.findWalletByUserId(id);
   }

@@ -165,30 +165,19 @@ export class WalletService {
       }
     });
 
-    return { status: true, data: "Initiated Withdrawal Request." };
+    return { status: true, message: "Initiated Withdrawal Request." };
   }
 
   async findWithdrawalsByUserId(
     userid: number,
-    src_term: string,
     limit: string = "10",
     skip: string = "0"
   ) {
-    const search_term_string = (src_term as string).match(/^([A-Za-z\s]+)/gm);
-    const search_term_number = (src_term as string).match(/\d*\d/gm);
-
     const withdrawals = await this.databaseService.withdrawals.findMany({
       where: {
         wallet: {
           user_id: userid,
         },
-        id: search_term_string
-          ? search_term_string[0].toLowerCase() === "hmw"
-            ? search_term_number
-              ? parseInt(search_term_number[0])
-              : undefined
-            : undefined
-          : undefined,
       },
       orderBy: {
         created_at: "desc",
@@ -215,13 +204,6 @@ export class WalletService {
         wallet: {
           user_id: userid,
         },
-        id: search_term_string
-          ? search_term_string[0].toLowerCase() === "hmw"
-            ? search_term_number
-              ? parseInt(search_term_number[0])
-              : undefined
-            : undefined
-          : undefined,
       },
     });
 
@@ -229,56 +211,83 @@ export class WalletService {
   }
 
   async findWithdrawals(
-    src: string | undefined,
-    status: string | undefined,
-    from: string | undefined,
-    to: string | undefined,
+    src_term: string | undefined,
     limit: string = "10",
     skip: string = "0"
   ) {
+    const search_term_string = src_term
+      ? (src_term as string).match(/^([A-Za-z\s]+)/gm)
+      : undefined;
+    const search_term_number = src_term
+      ? (src_term as string).match(/\d*\d/gm)
+      : undefined;
+
+    // If src_term is undefined, return all withdrawals
+    const whereClause = src_term
+      ? {
+          OR: [
+            {
+              id:
+                search_term_string?.[0].toLowerCase() === "hmw" &&
+                search_term_number
+                  ? parseInt(search_term_number[0])
+                  : undefined,
+            },
+            {
+              wallet: {
+                user_id:
+                  search_term_string?.[0].toLowerCase() === "hmu" &&
+                  search_term_number
+                    ? parseInt(search_term_number[0])
+                    : undefined,
+              },
+            },
+            {
+              wallet: {
+                owner: {
+                  OR: [
+                    {
+                      name: {
+                        contains: search_term_string?.[0].toLowerCase(),
+                      },
+                    },
+                    {
+                      phone: {
+                        contains: search_term_number?.[0],
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        }
+      : {}; // If no search term, whereClause is empty to return all records
+
     const withdrawals = await this.databaseService.withdrawals.findMany({
       orderBy: {
         created_at: "desc",
       },
-      where: {
-        status: status
-          ? status === "All"
-            ? undefined
-            : (status as "Pending" | "Completed")
-          : undefined,
-        created_at: {
-          gte: from ? new Date(new Date(from).setHours(0, 0, 0)) : undefined,
-          lte: to ? new Date(new Date(to).setHours(23, 59, 59)) : undefined,
-        },
-      },
+      where: whereClause,
       include: {
         wallet: {
-          select: {
+          include: {
             owner: {
               select: {
                 id: true,
                 name: true,
+                image: true,
               },
             },
           },
         },
       },
-      take: parseInt(limit),
       skip: parseInt(skip),
+      take: parseInt(limit),
     });
 
     const total = await this.databaseService.withdrawals.count({
-      where: {
-        status: status
-          ? status === "All"
-            ? undefined
-            : (status as "Pending" | "Completed")
-          : undefined,
-        created_at: {
-          gte: from ? new Date(new Date(from).setHours(0, 0, 0)) : undefined,
-          lte: to ? new Date(new Date(to).setHours(23, 59, 59)) : undefined,
-        },
-      },
+      where: whereClause,
     });
 
     return { status: true, data: { withdrawals, total } };
@@ -298,7 +307,7 @@ export class WalletService {
       // update the amount to the wallet
       const user_wallet = await prisma.wallets.update({
         where: {
-          id: userid,
+          user_id: userid,
         },
         data: {
           balance: {
@@ -410,6 +419,8 @@ export class WalletService {
   }
 
   async findWalletByUserId(userid: number) {
+    console.log(userid);
+
     const wallet = await this.databaseService.wallets.findFirst({
       where: {
         user_id: userid,
@@ -424,9 +435,153 @@ export class WalletService {
       },
     });
 
+    console.log(wallet);
+
     return {
       status: true,
       data: wallet,
+    };
+  }
+
+  async approveWithdrawalById(req, id: number, note: string | undefined) {
+    await this.databaseService.$transaction(async (prisma) => {
+      const updated_withdrawal = await prisma.withdrawals.update({
+        where: {
+          id: id,
+        },
+        data: {
+          status: "Completed",
+          note: note,
+        },
+        include: {
+          wallet: {
+            include: {
+              owner: {
+                select: {
+                  name: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const updated_wallet = await prisma.wallets.update({
+        where: {
+          user_id: req.user.id,
+        },
+        data: {
+          balance: {
+            decrement: Number(updated_withdrawal.amount),
+          },
+        },
+      });
+
+      if (Number(updated_wallet.balance) < 0) {
+        throw new Error(`Insufficient fund to approve withdrawal`);
+      }
+
+      await prisma.transactions.create({
+        data: {
+          wallet_id: updated_wallet.id,
+          amount: updated_withdrawal.amount,
+          balance: updated_wallet.balance,
+          txn_type: "ApprovedWithdrawal",
+          txn_note: `Approved Withdrawal Request - #${updated_withdrawal.id}`,
+        },
+      });
+
+      this.notificationService.sendSMS(
+        updated_withdrawal.wallet.owner.phone,
+        templates.Withdrawal_Confirmed,
+        [
+          {
+            Key: "customer",
+            Value: updated_withdrawal.wallet.owner.name,
+          },
+          {
+            Key: "amount",
+            Value: Number(updated_withdrawal.amount).toFixed(2),
+          },
+          {
+            Key: "date",
+            Value: format(new Date(), "dd/MM/yyyy"),
+          },
+          {
+            Key: "balance",
+            Value: Number(updated_withdrawal.wallet.balance).toFixed(2),
+          },
+        ]
+      );
+    });
+
+    return {
+      status: true,
+      message: "Withdrawal Approved Successfully.",
+    };
+  }
+
+  async rejectWithdrawalById(id: number, note: string | undefined) {
+    const withdrawal = await this.databaseService.withdrawals.update({
+      where: {
+        id: id,
+      },
+      data: {
+        status: "Rejected",
+        note: note,
+      },
+    });
+
+    const updated_wallet = await this.databaseService.wallets.update({
+      where: {
+        id: withdrawal.wallet_id,
+      },
+      data: {
+        balance: {
+          increment: Number(withdrawal.amount),
+        },
+      },
+      include: {
+        owner: {
+          select: {
+            name: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    await this.databaseService.transactions.create({
+      data: {
+        wallet_id: updated_wallet.id,
+        amount: withdrawal.amount,
+        balance: updated_wallet.balance,
+        txn_type: "Credit",
+        txn_note: `Withdrawal Refunded - #${withdrawal.id}`,
+      },
+    });
+
+    const resp = await this.notificationService.sendSMS(
+      updated_wallet.owner.phone,
+      templates.Rejected_Reason,
+      [
+        {
+          Key: "customer",
+          Value: updated_wallet.owner.name,
+        },
+        {
+          Key: "reason",
+          Value: note as string,
+        },
+      ]
+    );
+
+    console.log(resp);
+
+    return {
+      status: true,
+      message: "Withdrawal request rejected",
     };
   }
 }
