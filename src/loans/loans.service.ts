@@ -1276,4 +1276,20 @@ export class LoansService {
       message: updated_loan,
     };
   }
+
+  async reopen(loanid: number) {
+    const updated_loan = await this.databaseService.loans.update({
+      where: {
+        id: loanid,
+      },
+      data: {
+        loan_status: "Active",
+      },
+    });
+
+    return {
+      status: true,
+      message: updated_loan,
+    };
+  }
 }

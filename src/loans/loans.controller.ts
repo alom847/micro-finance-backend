@@ -100,6 +100,14 @@ export class LoansController {
     }
 
     try {
+      if (!files.guarantor_photo) {
+        throw new BadRequestException("Guarantor photo is required!");
+      }
+
+      if (!files.standard_form) {
+        throw new BadRequestException("Standard form is required!");
+      }
+
       const standard_form_url = await this.storageService.upload(
         files.standard_form[0].originalname,
         files.standard_form[0].buffer,
@@ -117,7 +125,7 @@ export class LoansController {
         guarantor_photo_url,
       });
     } catch (error) {
-      return { error: "Failed to upload file", details: error.message };
+      return { success: false, message: error.message };
     }
   }
 
@@ -319,5 +327,14 @@ export class LoansController {
     }
 
     return this.loansService.updateReferrer(id, body.ref_id);
+  }
+
+  @Post(":id/reopen")
+  async reopenLoan(@Req() req, @Param("id", ParseIntPipe) id) {
+    if (!["Admin"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    return this.loansService.reopen(id);
   }
 }
