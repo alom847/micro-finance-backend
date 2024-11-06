@@ -247,6 +247,7 @@ export class DepositsService {
             id: true,
             name: true,
             image: true,
+            phone: true,
           },
         },
         deposit_plan: {

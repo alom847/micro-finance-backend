@@ -102,7 +102,8 @@ export class LoansController {
     try {
       const standard_form_url = await this.storageService.upload(
         files.standard_form[0].originalname,
-        files.standard_form[0].buffer
+        files.standard_form[0].buffer,
+        false
       );
 
       const guarantor_photo_url = await this.storageService.upload(
@@ -164,7 +165,8 @@ export class LoansController {
       if (files.standard_form) {
         standard_form_url = await this.storageService.upload(
           files.standard_form[0].originalname,
-          files.standard_form[0].buffer
+          files.standard_form[0].buffer,
+          false
         );
       }
 

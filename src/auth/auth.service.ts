@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   Res,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -9,9 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Response } from "express";
 import { isEmail } from "class-validator";
-import { Prisma, user } from "@prisma/client";
-
-import * as CryptoJS from "crypto-js";
+import { user } from "@prisma/client";
 
 import { DatabaseService } from "../database/database.service";
 import { UsersService } from "../users/users.service";
@@ -19,6 +16,8 @@ import {
   NotificationService,
   templates,
 } from "../notification/notification.service";
+
+import { hash, compareHash } from "src/utils/hash";
 
 // import { UserRegisteredEvent } from './events/userRegisteredEvent';
 
@@ -31,30 +30,6 @@ export class AuthService {
     private readonly notificationService: NotificationService,
     private eventEmitter: EventEmitter2
   ) {}
-
-  hash(password: string): string {
-    const hashedPassword = CryptoJS.AES.encrypt(
-      password,
-      process.env.SALT as string
-    ).toString();
-
-    return hashedPassword;
-  }
-
-  compareHash(plainTextPassword: string, hashedPassword: string): boolean {
-    console.log(plainTextPassword);
-    console.log(hashedPassword);
-    console.log(process.env.SALT);
-
-    const decrypted_pass = CryptoJS.AES.decrypt(
-      hashedPassword,
-      process.env.SALT as string
-    ).toString(CryptoJS.enc.Utf8);
-
-    console.log(decrypted_pass);
-
-    return plainTextPassword === decrypted_pass;
-  }
 
   generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit OTP
@@ -91,7 +66,7 @@ export class AuthService {
       throw new UnauthorizedException("invalid credentials");
     }
 
-    if (!this.compareHash(password, user.password)) {
+    if (!compareHash(password, user.password)) {
       throw new UnauthorizedException("invalid credentials");
     }
 
@@ -133,7 +108,7 @@ export class AuthService {
     confirm: string,
     name: string
   ) {
-    const hashedPassword = this.hash(password);
+    const hashedPassword = hash(password);
 
     if (password != confirm) {
       throw new BadRequestException("Password mismatch");
@@ -146,7 +121,7 @@ export class AuthService {
 
     const otp = this.generateOTP();
 
-    const hashedOTP = this.hash(otp);
+    const hashedOTP = hash(otp);
 
     await this.databaseService.otp.deleteMany({
       where: {
@@ -208,7 +183,7 @@ export class AuthService {
       throw new BadRequestException("OTP has expired");
     }
 
-    if (!this.compareHash(otp, signup_request.otp)) {
+    if (!compareHash(otp, signup_request.otp)) {
       throw new BadRequestException("Provided OTP is incorrect.");
     }
 
@@ -329,11 +304,11 @@ export class AuthService {
       throw new BadRequestException("reset request has been expired!");
     }
 
-    if (!this.compareHash(otp, requestExists.otp)) {
+    if (!compareHash(otp, requestExists.otp)) {
       throw new BadRequestException("Provided OTP is incorrect.");
     }
 
-    const hashedPassword = this.hash(password);
+    const hashedPassword = hash(password);
 
     const reset_password = this.databaseService.user.update({
       where: {
@@ -369,7 +344,7 @@ export class AuthService {
 
     const otp = this.generateOTP();
 
-    const hashedOtp = this.hash(otp);
+    const hashedOtp = hash(otp);
 
     await this.databaseService.otp.create({
       data: {
@@ -402,7 +377,7 @@ export class AuthService {
   async resendOTP(identifier: string, type: string) {
     const otp = this.generateOTP();
 
-    const hashedOTP = this.hash(otp);
+    const hashedOTP = hash(otp);
 
     await this.databaseService.otp.updateMany({
       where: {

@@ -33,10 +33,12 @@ export class StorageService {
   //   }),
   // });
 
-  async upload(fileName: string, file: Buffer) {
-    const optimizedImage = await this.optimizeImage(file); // Optimize the image
+  async upload(fileName: string, file: Buffer, optimize: boolean = true) {
+    let image = file;
 
-    console.log(optimizedImage);
+    if (optimize) {
+      image = await this.optimizeImage(file); // Optimize the image
+    }
 
     const key = this.FOLDER + "/" + Date.now().toString() + "-" + fileName;
 
@@ -45,7 +47,7 @@ export class StorageService {
         Bucket: this.BUCKET,
         ACL: "public-read",
         Key: key,
-        Body: optimizedImage,
+        Body: image,
       })
     );
 

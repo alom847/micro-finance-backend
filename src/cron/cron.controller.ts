@@ -19,6 +19,6 @@ export class CronController {
 
   @Get()
   commission(@Request() req, @Body() body) {
-    return this.cronService.sendCommissions();
+    return this.cronService.GenerateOverdues();
   }
 }

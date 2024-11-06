@@ -134,8 +134,20 @@ GET /employee/:id
 GET /employee/:update
 
 
-
 // add permission check and authorizations
-// agent assignments on web not showing
-// EDIT LOAN/DEPOSIT APPLICATION
-// setup cron jobs
+
+
+
+[X] ⁠Support ot QR and UPI Payment Koribo Porakoi  val solution Sabo loga Ase [APK]
+[X] ⁠APK t Report pending Balance pending report_View Payments_Mark Paid r pisot warning popup dibo lage logot user Pasword Eter kori payment accept koribo lage [APK + Web]
+[X] ⁠Admin Profile tu fully Update koribo pora hobo lage 
+[X] ⁠UPI Setting option tu admin Profile ot ahibo lage 
+[X] apk t Manage deposit ot call bottom tu oha nai
+[X] Apk t profile pic upload nohoy aitu Sai diok
+[X] Today Due, Overdue, Total Due milai  diok
+
+[ ] ⁠Admin can force reopen loan
+[ ] ⁠Print Option (User List, User Details  Loan List, Loan Details, Loan Statement, Deposit List, Deposit Details, Deposit Statement,  Wallet statement, Withdrawal History) for Admin And Manager Only [Web]
+
+[ ] ⁠Website fevicon and Background Pic Changeable koribo lage and google search korile Company name Full formot ahibo lage 
+[ ] ⁠User details ot Drop Box ata Create kori lage (kiba ata notes create korile june create koribotar user id and date show hoi thakibo lage and hei data khini all agent manager admin sabo paribo)

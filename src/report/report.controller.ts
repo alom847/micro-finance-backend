@@ -19,6 +19,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import { formateId } from "src/utils/formateId";
 import { emi_records_category } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
+import { compareHash } from "src/utils/hash";
 
 @UseGuards(AuthGuard)
 @Controller("report")
@@ -299,6 +300,16 @@ export class ReportController {
   @Post("mark-paid")
   async markAsPaid(@Req() req, @Body() body) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    const user = await this.databaseService.user.findFirst({
+      where: {
+        id: req.user.id,
+      },
+    });
+
+    if (!user || !compareHash(body.pwd, user.password)) {
       throw new BadRequestException("Unauthorized");
     }
 
