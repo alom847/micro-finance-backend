@@ -3,7 +3,6 @@ import axios from "axios";
 
 import { createTransport, Transporter, TransportOptions } from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
-import { map } from "rxjs";
 
 export const templates = {
   Wallet_Debit: "1407169904241372254",

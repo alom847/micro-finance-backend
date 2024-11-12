@@ -28,13 +28,15 @@ import { StorageService } from "src/storage/storage.service";
 
 import { LoansService } from "./loans.service";
 import { UsersService } from "src/users/users.service";
+import { compareHash } from "src/utils/hash";
 
 @UseGuards(AuthGuard)
 @Controller("loans")
 export class LoansController {
   constructor(
-    private readonly loansService: LoansService,
     private readonly storageService: StorageService,
+    private readonly databaseService: DatabaseService,
+    private readonly loansService: LoansService,
     private readonly userService: UsersService
   ) {}
 
@@ -330,8 +332,18 @@ export class LoansController {
   }
 
   @Post(":id/reopen")
-  async reopenLoan(@Req() req, @Param("id", ParseIntPipe) id) {
+  async reopenLoan(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     if (!["Admin"].includes(req.user.role ?? "")) {
+      throw new BadRequestException("Unauthorized");
+    }
+
+    const user = await this.databaseService.user.findFirst({
+      where: {
+        id: req.user.id,
+      },
+    });
+
+    if (!user || !compareHash(body.pwd, user.password)) {
       throw new BadRequestException("Unauthorized");
     }
 
