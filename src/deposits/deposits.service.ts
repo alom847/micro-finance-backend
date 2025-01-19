@@ -805,6 +805,20 @@ export class DepositsService {
     // let remainingAmount = amount;
     // let remainingFeeAmount = Number(total_fee_paid);
 
+    const deposit = await this.databaseService.deposits.findFirst({
+      where: {
+        id: depositid,
+      },
+    });
+
+    if (!deposit) {
+      throw new BadRequestException("Can not find Deposit");
+    }
+
+    if (deposit.deposit_status != "Active") {
+      throw new BadRequestException("deposit is not in Active status.");
+    }
+
     await this.databaseService.$transaction(async (tx) => {
       const updated_deposit = await tx.deposits.update({
         where: {

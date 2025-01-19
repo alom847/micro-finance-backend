@@ -120,6 +120,15 @@ export class KycsService {
       },
     });
 
+    await this.databaseService.user.update({
+      where: {
+        id: kyc.user_id,
+      },
+      data: {
+        kyc_verified: false,
+      },
+    });
+
     return {
       status: true,
       message: kyc,

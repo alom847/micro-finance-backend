@@ -384,6 +384,7 @@ enum deposits_deposit_status {
   Approved
   Rejected
   Active
+  Matured
   Closed
   PrematureClosed
 }
