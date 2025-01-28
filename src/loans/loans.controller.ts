@@ -29,6 +29,8 @@ import { StorageService } from "src/storage/storage.service";
 import { LoansService } from "./loans.service";
 import { UsersService } from "src/users/users.service";
 import { compareHash } from "src/utils/hash";
+import { PermissionGuard } from "src/auth/permission.guard";
+import { RequiredPermissions } from "src/auth/permission.decorator";
 
 @UseGuards(AuthGuard)
 @Controller("loans")
@@ -198,6 +200,8 @@ export class LoansController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("loan_approval")
   @Post(":id/update")
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -282,26 +286,36 @@ export class LoansController {
     return this.loansService.findAssignedAgentsByLoanId(id, agent_id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("loan_approval")
   @Post(":id/approve")
   async approveLoan(@Req() req, @Param("id", ParseIntPipe) id) {
     return this.loansService.ApproveLoanById(req.user.id, id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("loan_approval")
   @Post(":id/reject")
   async rejectLoan(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.loansService.RejectLoanById(req.user.id, id, body.remark);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("agent_assignment")
   @Post(":id/assign-agent")
   async assignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.loansService.assignAgent(id, body.agent_id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("agent_assignment")
   @Post(":id/unassign-agent")
   async unassignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.loansService.unassignAgent(id, body.agent_id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("repayment_collection")
   @Post(":id/collect")
   async collectRepayment(
     @Req() req,
@@ -311,6 +325,8 @@ export class LoansController {
     return this.loansService.collectRepayment(req, id, body.emi_data);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("loan_settlement")
   @Post(":id/settle")
   async settlement(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.loansService.settlement(req.user.id, id, body.settle_data);

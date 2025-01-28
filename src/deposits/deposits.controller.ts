@@ -25,6 +25,8 @@ import { StorageService } from "src/storage/storage.service";
 
 import { DepositsService } from "./deposits.service";
 import { UsersService } from "src/users/users.service";
+import { PermissionGuard } from "src/auth/permission.guard";
+import { RequiredPermissions } from "src/auth/permission.decorator";
 
 @UseGuards(AuthGuard)
 @Controller("deposits")
@@ -124,6 +126,8 @@ export class DepositsController {
     return this.depositsService.findUserDepositById(req.user.id, id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("deposit_approval")
   @Post(":id/update")
   async updateDeposit(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
@@ -162,26 +166,36 @@ export class DepositsController {
     return this.depositsService.findAssignedAgentsByDepositId(id, agent_id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("deposit_approval")
   @Post(":id/approve")
   async approve(@Req() req, @Param("id", ParseIntPipe) id) {
     return this.depositsService.approveDepositById(req.user.id, id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("deposit_approval")
   @Post(":id/reject")
   async reject(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.depositsService.rejectDepositByID(id, body.remark);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("agent_assignment")
   @Post(":id/assign-agent")
   async assignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.depositsService.assignAgent(id, body.agent_id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("agent_assignment")
   @Post(":id/unassign-agent")
   async unassignAgent(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.depositsService.unassignAgent(id, body.agent_id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("repayment_collection")
   @Post(":id/collect")
   async collectRepayment(
     @Req() req,
@@ -191,6 +205,8 @@ export class DepositsController {
     return this.depositsService.collectRepayment(req, id, body.emi_data);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("deposit_maturity")
   @Post(":id/settle")
   async settlement(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.depositsService.settlement(req.user.id, id, body.settle_data);

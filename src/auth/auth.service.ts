@@ -38,8 +38,6 @@ export class AuthService {
   async signin(email: string, password: string, @Res() response: Response) {
     let user: Partial<user> = null;
 
-    console.log(email, password);
-
     if (isEmail(email)) {
       const { data } = await this.usersService.findOneByEmail(email);
       user = data;
@@ -47,8 +45,6 @@ export class AuthService {
       const { data } = await this.usersService.findOneByPhone(email);
       user = data;
     }
-
-    console.log(user);
 
     if (!user) {
       const tempExist = await this.databaseService.otp.findMany({

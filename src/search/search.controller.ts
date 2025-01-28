@@ -303,7 +303,7 @@ export class SearchController {
         deposits = await this.databaseService.deposits.findMany({
           where: {
             deposit_status: {
-              in: ["Active", "Closed", "PrematureClosed"],
+              in: ["Active", "Closed", "PrematureClosed", "Matured"],
             },
             OR: [
               {

@@ -191,6 +191,8 @@ export class NotificationService {
     template_id: string,
     values: { Key: string; Value: string }[] = []
   ) {
+    return console.log(`sent ${target} - ${template_id} - ${values}`);
+
     try {
       const { data } = await axios.post(
         `${this.BASE_URL}/Send_SMS`,

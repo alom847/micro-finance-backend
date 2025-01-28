@@ -31,6 +31,8 @@ import {
   NotificationService,
   templates,
 } from "src/notification/notification.service";
+import { PermissionGuard } from "src/auth/permission.guard";
+import { RequiredPermissions } from "src/auth/permission.decorator";
 
 @UseGuards(AuthGuard)
 @Controller("user")
@@ -60,6 +62,8 @@ export class UsersController {
     return plainTextPassword === decrypted_pass;
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
   @Get()
   async fetchAll(
     @Req() req,
@@ -480,6 +484,20 @@ export class UsersController {
       },
     });
 
+    const matured = await this.databaseService.deposits.aggregate({
+      _sum: {
+        total_paid: true,
+      },
+      _count: {
+        amount: true,
+      },
+      where: {
+        deposit_status: {
+          in: ["Matured"],
+        },
+      },
+    });
+
     return {
       status: true,
       message: {
@@ -490,6 +508,10 @@ export class UsersController {
             paid: Number(deposit_paid_today._sum.amount),
             due: Number(deposit_due_today._sum.emi_amount),
           },
+        },
+        matured: {
+          count: matured._count.amount,
+          amount: Number(matured._sum.total_paid),
         },
         loans: {
           count: loans._count.amount,
@@ -525,16 +547,22 @@ export class UsersController {
     );
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("view_user_details")
   @Get(":id")
   async getUser(@Req() req, @Param("id", ParseIntPipe) id) {
     return this.usersService.findUserDetails(id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
   @Post(":id/update")
   async updateUser(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     return this.usersService.updateUserByUserId(id, body);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
   @Post(":id/change-pwd")
   async ChangeUserPwd(@Req() req, @Param("id", ParseIntPipe) id, @Body() body) {
     if (!(body.password && (body.password as string).length >= 6)) {
@@ -563,6 +591,8 @@ export class UsersController {
     };
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
   @Post("approve")
   async approve(@Req() req, @Body() body) {
     const signup_request = await this.databaseService.otp.findFirst({
@@ -621,6 +651,8 @@ export class UsersController {
     };
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
   @Post("reject")
   async reject(@Req() req, @Body() body) {
     await this.databaseService.otp.deleteMany({

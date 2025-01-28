@@ -16,6 +16,8 @@ import {
 import { WalletService } from "./wallet.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { DatabaseService } from "../database/database.service";
+import { PermissionGuard } from "src/auth/permission.guard";
+import { RequiredPermissions } from "src/auth/permission.decorator";
 
 @UseGuards(AuthGuard)
 @Controller("wallet")
@@ -133,6 +135,8 @@ export class WalletController {
     );
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("withdrawal_management")
   @Post("withdrawals/approve")
   async approveWithdrawalById(@Request() req, @Body() body) {
     if (!["Admin", "Manager"].includes(req.user.role)) {
@@ -142,6 +146,8 @@ export class WalletController {
     return this.walletService.approveWithdrawalById(req, body.id, body.note);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("withdrawal_management")
   @Post("withdrawals/reject")
   async rejectWithdrawalById(@Request() req, @Body() body) {
     if (!["Admin", "Manager"].includes(req.user.role)) {

@@ -2,23 +2,19 @@ import {
   Controller,
   Get,
   Body,
-  Patch,
   Post,
   Req,
   Param,
-  Delete,
-  Query,
   ParseIntPipe,
   UseGuards,
-  BadRequestException,
 } from "@nestjs/common";
 
 import { RepaymentService } from "./repayment.service";
 import { AuthGuard } from "../auth/auth.guard";
 
-import { formateId } from "src/utils/formateId";
-import { emi_records_category } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
+import { RequiredPermissions } from "src/auth/permission.decorator";
+import { PermissionGuard } from "src/auth/permission.guard";
 
 @UseGuards(AuthGuard)
 @Controller("repayments")
@@ -33,7 +29,9 @@ export class RepaymentController {
     return this.repaymentService.getRepaymentId(id);
   }
 
+  @UseGuards(PermissionGuard)
   @Post(":id/correct")
+  @RequiredPermissions("repayment_correction")
   async correctRepaymentById(
     @Req() req,
     @Param("id", ParseIntPipe) id,

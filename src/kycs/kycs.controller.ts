@@ -23,6 +23,8 @@ import { StorageService } from "src/storage/storage.service";
 
 import { KycsService } from "./kycs.service";
 import { skip } from "node:test";
+import { PermissionGuard } from "src/auth/permission.guard";
+import { RequiredPermissions } from "src/auth/permission.decorator";
 
 @UseGuards(AuthGuard)
 @Controller("kycs")
@@ -51,6 +53,8 @@ export class KycsController {
     return this.kycService.findKycByUserId(req.user.id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("kyc_management")
   @Get(":id")
   async fetchKycById(@Req() req, @Param("id", ParseIntPipe) id) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
@@ -60,6 +64,8 @@ export class KycsController {
     return this.kycService.fetchKycById(id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("kyc_management")
   @Post(":id/approve")
   async approveKycById(@Req() req, @Param("id", ParseIntPipe) id) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
@@ -69,6 +75,8 @@ export class KycsController {
     return this.kycService.approveKycById(id);
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("kyc_management")
   @Post(":id/reject")
   async rejectKycById(@Req() req, @Param("id", ParseIntPipe) id) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {

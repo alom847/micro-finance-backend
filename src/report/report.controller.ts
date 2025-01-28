@@ -20,6 +20,8 @@ import { formateId } from "src/utils/formateId";
 import { emi_records_category } from "@prisma/client";
 import { DatabaseService } from "src/database/database.service";
 import { compareHash } from "src/utils/hash";
+import { PermissionGuard } from "src/auth/permission.guard";
+import { RequiredPermissions } from "src/auth/permission.decorator";
 
 @UseGuards(AuthGuard)
 @Controller("report")
@@ -297,6 +299,8 @@ export class ReportController {
     };
   }
 
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("agent_collection")
   @Post("mark-paid")
   async markAsPaid(@Req() req, @Body() body) {
     if (!["Admin", "Manager"].includes(req.user.role ?? "")) {

@@ -11,7 +11,6 @@ import {
   Put,
 } from "@nestjs/common";
 import { CronJobService } from "./cron.service";
-import { AuthGuard } from "../auth/auth.guard";
 
 @Controller("cron")
 export class CronController {

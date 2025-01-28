@@ -101,7 +101,7 @@ export class DepositsService {
         deposit_status: status
           ? (status as deposits_deposit_status)
           : {
-              in: ["Active", "Pending", "Rejected"],
+              in: ["Active", "Matured", "Pending", "Rejected"],
             },
       },
       take: limit,
