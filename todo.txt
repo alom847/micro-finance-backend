@@ -149,5 +149,3 @@ GET /employee/:update
 
 [ ] ⁠Website fevicon and Background Pic Changeable koribo lage and google search korile Company name Full formot ahibo lage 
 [ ] ⁠User details ot Drop Box ata Create kori lage (kiba ata notes create korile june create koribotar user id and date show hoi thakibo lage and hei data khini all agent manager admin sabo paribo)
-
-test
