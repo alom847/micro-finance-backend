@@ -61,7 +61,8 @@ export class LoansController {
             req.user.id,
             "Loan",
             parseInt(limit ?? "10"),
-            parseInt(skip ?? "0")
+            parseInt(skip ?? "0"),
+            search
           );
         }
 

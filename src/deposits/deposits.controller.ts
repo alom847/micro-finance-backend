@@ -56,7 +56,8 @@ export class DepositsController {
             req.user.id,
             "Deposit",
             parseInt(limit ?? "10"),
-            parseInt(skip ?? "0")
+            parseInt(skip ?? "0"),
+            search
           );
         }
 

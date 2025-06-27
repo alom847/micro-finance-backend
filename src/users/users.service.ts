@@ -277,9 +277,11 @@ export class UsersService {
     userid: number,
     type: string,
     limit: number,
-    skip: number
+    skip: number,
+    search: string
   ) {
-    console.log("here");
+    const search_term_string = (search as string).match(/^([A-Za-z\s]+)/gm);
+    const search_term_number = (search as string).match(/\d*\d/gm);
 
     if (type === "Deposit") {
       const assignment_records =
@@ -304,6 +306,42 @@ export class UsersService {
               in: assignments,
             },
             deposit_status: "Active",
+            OR: [
+              {
+                id: search_term_string
+                  ? ["hmr", "hmf"].includes(search_term_string[0].toLowerCase())
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user_id: search_term_string
+                  ? search_term_string[0].toLowerCase() === "hmu"
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user: {
+                  OR: [
+                    {
+                      name: {
+                        contains: search as string,
+                      },
+                    },
+                    {
+                      phone: {
+                        contains: search as string,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
           },
           include: {
             user: {
@@ -325,6 +363,42 @@ export class UsersService {
               in: assignments,
             },
             deposit_status: "Active",
+            OR: [
+              {
+                id: search_term_string
+                  ? ["hmr", "hmf"].includes(search_term_string[0].toLowerCase())
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user_id: search_term_string
+                  ? search_term_string[0].toLowerCase() === "hmu"
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user: {
+                  OR: [
+                    {
+                      name: {
+                        contains: search as string,
+                      },
+                    },
+                    {
+                      phone: {
+                        contains: search as string,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
           },
         });
 
@@ -357,6 +431,42 @@ export class UsersService {
               in: assignments,
             },
             loan_status: "Active",
+            OR: [
+              {
+                id: search_term_string
+                  ? search_term_string[0].toLowerCase() === "hml"
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user_id: search_term_string
+                  ? search_term_string[0].toLowerCase() === "hmu"
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user: {
+                  OR: [
+                    {
+                      name: {
+                        contains: search as string,
+                      },
+                    },
+                    {
+                      phone: {
+                        contains: search as string,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
           },
           include: {
             user: {
@@ -398,6 +508,42 @@ export class UsersService {
               in: assignments,
             },
             loan_status: "Active",
+            OR: [
+              {
+                id: search_term_string
+                  ? search_term_string[0].toLowerCase() === "hml"
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user_id: search_term_string
+                  ? search_term_string[0].toLowerCase() === "hmu"
+                    ? search_term_number
+                      ? parseInt(search_term_number[0])
+                      : undefined
+                    : undefined
+                  : undefined,
+              },
+              {
+                user: {
+                  OR: [
+                    {
+                      name: {
+                        contains: search as string,
+                      },
+                    },
+                    {
+                      phone: {
+                        contains: search as string,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
           },
         });
 
