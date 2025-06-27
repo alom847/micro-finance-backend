@@ -3,10 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider     = "mysql"
-  url          = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
   // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
-  relationMode = "prisma"
+  // relationMode = "prisma"
 }
 
 model user {
@@ -48,6 +48,9 @@ model user {
   emi_records_emi_records_collected_byTouser emi_records[]      @relation("emi_records_collected_byTouser")
   assignments                                assignments[]
   emi_records_emi_records_hold_byTouser      emi_records[]      @relation("emi_records_hold_byTouser")
+
+  notes     notes[] @relation("note")
+  notesByMe notes[] @relation("note_owner")
 }
 
 model wallets {
@@ -168,6 +171,7 @@ model loans {
   last_repayment           DateTime?
   loan_plan                loan_plans               @relation(fields: [plan_id], references: [id], onDelete: Cascade)
   user                     user                     @relation("loans_user_idTouser", fields: [user_id], references: [id], onDelete: Cascade)
+  notes                    notes[]
 
   @@index([plan_id], map: "loans_plan_id_fkey")
   @@index([user_id], map: "loans_user_id_fkey")
@@ -226,6 +230,7 @@ model deposits {
   deposit_status              deposits_deposit_status            @default(Pending)
   deposit_plan                deposit_plans                      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
   user                        user                               @relation("deposits_user_idTouser", fields: [user_id], references: [id], onDelete: Cascade)
+  notes                       notes[]
 
   @@index([plan_id], map: "deposits_plan_id_fkey")
   @@index([user_id], map: "deposits_user_id_fkey")
@@ -282,6 +287,23 @@ model settings {
   id    Int    @id @default(autoincrement())
   key   String @unique
   value String
+}
+
+model notes {
+  id         Int      @id @default(autoincrement())
+  content    String
+  created_by Int?
+  created_at DateTime @default(now())
+
+  user_id    Int?
+  loan_id    Int?
+  deposit_id Int?
+
+  // Relations
+  owner   user?     @relation("note_owner", fields: [created_by], references: [id], onDelete: Cascade)
+  user    user?     @relation("note", fields: [user_id], references: [id], onDelete: Cascade)
+  loan    loans?    @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  deposit deposits? @relation(fields: [deposit_id], references: [id], onDelete: Cascade)
 }
 
 enum role {

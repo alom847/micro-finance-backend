@@ -45,7 +45,10 @@ export class LoansService {
     private readonly notificationService: NotificationService
   ) {}
 
-  async fetchAll(skip: number, limit: number, status: string) {
+  async fetchAll(skip: number, limit: number, status: string, search: string) {
+    const search_term_string = (search as string).match(/^([A-Za-z\s]+)/gm);
+    const search_term_number = (search as string).match(/\d*\d/gm);
+
     const loans = await this.databaseService.loans.findMany({
       orderBy: {
         loan_date: "desc",
@@ -56,6 +59,42 @@ export class LoansService {
           : {
               notIn: ["Pending", "Rejected"],
             },
+        OR: [
+          {
+            id: search_term_string
+              ? search_term_string[0].toLowerCase() === "hml"
+                ? search_term_number
+                  ? parseInt(search_term_number[0])
+                  : undefined
+                : undefined
+              : undefined,
+          },
+          {
+            user_id: search_term_string
+              ? search_term_string[0].toLowerCase() === "hmu"
+                ? search_term_number
+                  ? parseInt(search_term_number[0])
+                  : undefined
+                : undefined
+              : undefined,
+          },
+          {
+            user: {
+              OR: [
+                {
+                  name: {
+                    contains: search as string,
+                  },
+                },
+                {
+                  phone: {
+                    contains: search as string,
+                  },
+                },
+              ],
+            },
+          },
+        ],
       },
       include: {
         user: {
@@ -98,6 +137,42 @@ export class LoansService {
           : {
               notIn: ["Pending", "Rejected"],
             },
+        OR: [
+          {
+            id: search_term_string
+              ? search_term_string[0].toLowerCase() === "hml"
+                ? search_term_number
+                  ? parseInt(search_term_number[0])
+                  : undefined
+                : undefined
+              : undefined,
+          },
+          {
+            user_id: search_term_string
+              ? search_term_string[0].toLowerCase() === "hmu"
+                ? search_term_number
+                  ? parseInt(search_term_number[0])
+                  : undefined
+                : undefined
+              : undefined,
+          },
+          {
+            user: {
+              OR: [
+                {
+                  name: {
+                    contains: search as string,
+                  },
+                },
+                {
+                  phone: {
+                    contains: search as string,
+                  },
+                },
+              ],
+            },
+          },
+        ],
       },
     });
 

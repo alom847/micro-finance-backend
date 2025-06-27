@@ -204,6 +204,9 @@ export class SearchController {
         users = [];
       } else {
         users = await this.databaseService.user.findMany({
+          orderBy: {
+            created_at: "desc",
+          },
           where: {
             OR: [
               {
@@ -241,6 +244,9 @@ export class SearchController {
         loans = [];
       } else {
         const loansWithoutDues = await this.databaseService.loans.findMany({
+          orderBy: {
+            created_at: "desc",
+          },
           where: {
             loan_status: { in: ["Active", "Closed", "Settlement"] },
             OR: [
@@ -301,6 +307,9 @@ export class SearchController {
         deposits = [];
       } else {
         deposits = await this.databaseService.deposits.findMany({
+          orderBy: {
+            created_at: "desc",
+          },
           where: {
             deposit_status: {
               in: ["Active", "Closed", "PrematureClosed", "Matured"],
@@ -351,6 +360,9 @@ export class SearchController {
 
     if (["Kycs"].includes(filter as string)) {
       kycs = await this.databaseService.kyc_verifications.findMany({
+        orderBy: {
+          created_at: "desc",
+        },
         where: {
           OR: [
             {
@@ -386,10 +398,20 @@ export class SearchController {
       });
     }
 
-    if (["Loan_Pending"].includes(filter as string)) {
-      loan_pendings = await this.databaseService.loans.findMany({
+    if (
+      [
+        "Loans_Pending",
+        "Loans_Active",
+        "Loans_Closed",
+        "Loans_Settlement",
+      ].includes(filter as string)
+    ) {
+      const loansWithoutDues = await this.databaseService.loans.findMany({
+        orderBy: {
+          created_at: "desc",
+        },
         where: {
-          loan_status: "Pending",
+          loan_status: filter.split("_")[1] as any,
           OR: [
             {
               id: search_term_string
@@ -431,12 +453,32 @@ export class SearchController {
           user: true,
         },
       });
+
+      for (const loan of loansWithoutDues) {
+        const due = await this.getDue(loan.id);
+
+        loans.push({
+          ...loan,
+          due,
+        });
+      }
     }
 
-    if (["Deposit_Pending"].includes(filter as string)) {
-      deposit_pendings = await this.databaseService.deposits.findMany({
+    if (
+      [
+        "Deposits_Pending",
+        "Deposits_Active",
+        "Deposits_Matured",
+        "Deposits_Closed",
+        "Deposits_PrematureClosed",
+      ].includes(filter as string)
+    ) {
+      deposits = await this.databaseService.deposits.findMany({
+        orderBy: {
+          created_at: "desc",
+        },
         where: {
-          deposit_status: "Pending",
+          deposit_status: filter.split("_")[1] as any,
           OR: [
             {
               id: search_term_string

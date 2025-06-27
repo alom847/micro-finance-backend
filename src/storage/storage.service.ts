@@ -7,7 +7,7 @@ import * as sharp from "sharp";
 @Injectable()
 export class StorageService {
   private readonly REGION = "ap-south-1";
-  private readonly BUCKET = "himalayan-microfin";
+  private readonly BUCKET = process.env.AWS_S3_BUCKET;
   private readonly FOLDER = "images";
 
   private readonly s3 = new S3Client({

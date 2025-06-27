@@ -27,13 +27,16 @@ import { DepositsService } from "./deposits.service";
 import { UsersService } from "src/users/users.service";
 import { PermissionGuard } from "src/auth/permission.guard";
 import { RequiredPermissions } from "src/auth/permission.decorator";
+import { NotesService } from "src/notes/note.service";
+import { CreateNoteDto } from "src/notes/dto/note.dto";
 
 @UseGuards(AuthGuard)
 @Controller("deposits")
 export class DepositsController {
   constructor(
     private readonly depositsService: DepositsService,
-    private readonly userSerice: UsersService
+    private readonly userSerice: UsersService,
+    private readonly notesService: NotesService
   ) {}
 
   @Get()
@@ -43,7 +46,8 @@ export class DepositsController {
     @Query("limit") limit: string | undefined,
     @Query("skip") skip: string | undefined,
     @Query("scope") scope: string | undefined,
-    @Query("status") status: string | undefined
+    @Query("status") status: string | undefined,
+    @Query("search") search: string | undefined
   ) {
     if (scope === "all") {
       if (!["Admin", "Manager"].includes(req.user.role ?? "")) {
@@ -63,7 +67,8 @@ export class DepositsController {
         category,
         parseInt(limit ?? "10"),
         parseInt(skip ?? "0"),
-        status
+        status,
+        search
       );
     }
 
@@ -219,5 +224,32 @@ export class DepositsController {
     @Body() body
   ) {
     return this.depositsService.updateReferrer(id, body.ref_id);
+  }
+
+  @UseGuards(PermissionGuard)
+  @Post(":id/add-note")
+  async addNoteToDeposit(
+    @Req() req,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: CreateNoteDto
+  ) {
+    const note = await this.notesService.addNote(req.user.id, {
+      content: body.content,
+      deposit_id: id,
+    });
+    return { status: true, note };
+  }
+
+  @Get(":id/notes")
+  async getUserNotes(@Param("id", ParseIntPipe) id: number) {
+    const notes = await this.notesService.getNotes({ deposit_id: id });
+    return { status: true, notes };
+  }
+
+  @Delete("note/:noteId")
+  @RequiredPermissions("agent_assignment")
+  async deleteUserNote(@Param("noteId", ParseIntPipe) noteId: number) {
+    await this.notesService.deleteNote(noteId);
+    return { status: true, message: "Note deleted" };
   }
 }

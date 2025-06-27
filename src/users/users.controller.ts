@@ -33,6 +33,8 @@ import {
 } from "src/notification/notification.service";
 import { PermissionGuard } from "src/auth/permission.guard";
 import { RequiredPermissions } from "src/auth/permission.decorator";
+import { NotesService } from "src/notes/note.service";
+import { CreateNoteDto } from "src/notes/dto/note.dto";
 
 @UseGuards(AuthGuard)
 @Controller("user")
@@ -41,7 +43,8 @@ export class UsersController {
     private readonly databaseService: DatabaseService,
     private readonly usersService: UsersService,
     private readonly storageService: StorageService,
-    private readonly notificationService: NotificationService
+    private readonly notificationService: NotificationService,
+    private readonly notesService: NotesService
   ) {}
 
   hash(password: string): string {
@@ -665,5 +668,33 @@ export class UsersController {
       status: true,
       message: "success",
     };
+  }
+
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
+  @Post(":id/add-note")
+  async addNoteToUser(
+    @Req() req,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: CreateNoteDto
+  ) {
+    const note = await this.notesService.addNote(req.user.id, {
+      content: body.content,
+      user_id: id,
+    });
+    return { status: true, note };
+  }
+
+  @Get(":id/notes")
+  async getUserNotes(@Param("id", ParseIntPipe) id: number) {
+    const notes = await this.notesService.getNotes({ user_id: id });
+    return { status: true, notes };
+  }
+
+  @Delete("note/:noteId")
+  @RequiredPermissions("agent_assignment")
+  async deleteUserNote(@Param("noteId", ParseIntPipe) noteId: number) {
+    await this.notesService.deleteNote(noteId);
+    return { status: true, message: "Note deleted" };
   }
 }
