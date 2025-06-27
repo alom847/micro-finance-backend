@@ -691,8 +691,9 @@ export class UsersController {
     return { status: true, notes };
   }
 
-  @Delete("note/:noteId")
+  @UseGuards(PermissionGuard)
   @RequiredPermissions("agent_assignment")
+  @Delete("note/:noteId")
   async deleteUserNote(@Param("noteId", ParseIntPipe) noteId: number) {
     await this.notesService.deleteNote(noteId);
     return { status: true, message: "Note deleted" };
