@@ -537,7 +537,8 @@ export class UsersController {
     @Req() req,
     @Query("type") type: string,
     @Query("skip") skip: string | undefined,
-    @Query("limit") limit: string | undefined
+    @Query("limit") limit: string | undefined,
+    @Query("search") search: string | undefined
   ) {
     if (req.user.role !== "Agent")
       throw new BadRequestException("Unauthorized");
@@ -546,7 +547,8 @@ export class UsersController {
       req.user.id,
       type,
       parseInt(limit ?? "10"),
-      parseInt(skip ?? "0")
+      parseInt(skip ?? "0"),
+      search
     );
   }
 
