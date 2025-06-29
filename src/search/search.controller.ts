@@ -20,8 +20,49 @@ export class SearchController {
     @Query("filter") filter: string,
     @Query("src_term") src_term: string
   ) {
-    const search_term_string = (src_term as string).match(/^([A-Za-z\s]+)/gm);
-    const search_term_number = (src_term as string).match(/\d*\d/gm);
+    const search_term_string = (src_term as string)?.match(/^([A-Za-z\s]+)/gm);
+    const search_term_number = (src_term as string)?.match(/\d*\d/gm);
+
+    const orConditions: any[] = [];
+
+    if (
+      search_term_string &&
+      ["hmr", "hmf", "hml"].includes(search_term_string[0].toLowerCase()) &&
+      search_term_number
+    ) {
+      orConditions.push({
+        id: parseInt(search_term_number[0]),
+      });
+    }
+
+    if (
+      search_term_string &&
+      search_term_string[0].toLowerCase() === "hmu" &&
+      search_term_number
+    ) {
+      orConditions.push({
+        user_id: parseInt(search_term_number[0]),
+      });
+    }
+
+    if (src_term) {
+      orConditions.push({
+        user: {
+          OR: [
+            {
+              name: {
+                contains: src_term,
+              },
+            },
+            {
+              phone: {
+                contains: src_term,
+              },
+            },
+          ],
+        },
+      });
+    }
 
     let users: user[] = [];
     let loans: (loans & {
@@ -59,42 +100,7 @@ export class SearchController {
                   in: assignments,
                 },
                 loan_status: "Active",
-                OR: [
-                  {
-                    id: search_term_string
-                      ? search_term_string[0].toLowerCase() === "hml"
-                        ? search_term_number
-                          ? parseInt(search_term_number[0])
-                          : undefined
-                        : undefined
-                      : undefined,
-                  },
-                  {
-                    user_id: search_term_string
-                      ? search_term_string[0].toLowerCase() === "hmu"
-                        ? search_term_number
-                          ? parseInt(search_term_number[0])
-                          : undefined
-                        : undefined
-                      : undefined,
-                  },
-                  {
-                    user: {
-                      OR: [
-                        {
-                          name: {
-                            contains: src_term as string,
-                          },
-                        },
-                        {
-                          phone: {
-                            contains: src_term as string,
-                          },
-                        },
-                      ],
-                    },
-                  },
-                ],
+                ...(orConditions.length > 0 && { OR: orConditions }),
               },
               include: {
                 user: true,
@@ -139,44 +145,7 @@ export class SearchController {
                   in: assignments,
                 },
                 deposit_status: "Active",
-                OR: [
-                  {
-                    id: search_term_string
-                      ? ["hmr", "hmf"].includes(
-                          search_term_string[0].toLowerCase()
-                        )
-                        ? search_term_number
-                          ? parseInt(search_term_number[0])
-                          : undefined
-                        : undefined
-                      : undefined,
-                  },
-                  {
-                    user_id: search_term_string
-                      ? search_term_string[0].toLowerCase() === "hmu"
-                        ? search_term_number
-                          ? parseInt(search_term_number[0])
-                          : undefined
-                        : undefined
-                      : undefined,
-                  },
-                  {
-                    user: {
-                      OR: [
-                        {
-                          name: {
-                            contains: src_term as string,
-                          },
-                        },
-                        {
-                          phone: {
-                            contains: src_term as string,
-                          },
-                        },
-                      ],
-                    },
-                  },
-                ],
+                ...(orConditions.length > 0 && { OR: orConditions }),
               },
               include: {
                 user: true,
@@ -249,42 +218,7 @@ export class SearchController {
           },
           where: {
             loan_status: { in: ["Active", "Closed", "Settlement"] },
-            OR: [
-              {
-                id: search_term_string
-                  ? search_term_string[0].toLowerCase() === "hml"
-                    ? search_term_number
-                      ? parseInt(search_term_number[0])
-                      : undefined
-                    : undefined
-                  : undefined,
-              },
-              {
-                user_id: search_term_string
-                  ? search_term_string[0].toLowerCase() === "hmu"
-                    ? search_term_number
-                      ? parseInt(search_term_number[0])
-                      : undefined
-                    : undefined
-                  : undefined,
-              },
-              {
-                user: {
-                  OR: [
-                    {
-                      name: {
-                        contains: src_term as string,
-                      },
-                    },
-                    {
-                      phone: {
-                        contains: src_term as string,
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
+            ...(orConditions.length > 0 && { OR: orConditions }),
           },
           include: {
             user: true,
@@ -314,42 +248,7 @@ export class SearchController {
             deposit_status: {
               in: ["Active", "Closed", "PrematureClosed", "Matured"],
             },
-            OR: [
-              {
-                id: search_term_string
-                  ? ["hmr", "hmf"].includes(search_term_string[0].toLowerCase())
-                    ? search_term_number
-                      ? parseInt(search_term_number[0])
-                      : undefined
-                    : undefined
-                  : undefined,
-              },
-              {
-                user_id: search_term_string
-                  ? search_term_string[0].toLowerCase() === "hmu"
-                    ? search_term_number
-                      ? parseInt(search_term_number[0])
-                      : undefined
-                    : undefined
-                  : undefined,
-              },
-              {
-                user: {
-                  OR: [
-                    {
-                      name: {
-                        contains: src_term as string,
-                      },
-                    },
-                    {
-                      phone: {
-                        contains: src_term as string,
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
+            ...(orConditions.length > 0 && { OR: orConditions }),
           },
           include: {
             user: true,
@@ -412,42 +311,7 @@ export class SearchController {
         },
         where: {
           loan_status: filter.split("_")[1] as any,
-          OR: [
-            {
-              id: search_term_string
-                ? search_term_string[0].toLowerCase() === "hml"
-                  ? search_term_number
-                    ? parseInt(search_term_number[0])
-                    : undefined
-                  : undefined
-                : undefined,
-            },
-            {
-              user_id: search_term_string
-                ? search_term_string[0].toLowerCase() === "hmu"
-                  ? search_term_number
-                    ? parseInt(search_term_number[0])
-                    : undefined
-                  : undefined
-                : undefined,
-            },
-            {
-              user: {
-                OR: [
-                  {
-                    name: {
-                      contains: src_term as string,
-                    },
-                  },
-                  {
-                    phone: {
-                      contains: src_term as string,
-                    },
-                  },
-                ],
-              },
-            },
-          ],
+          ...(orConditions.length > 0 && { OR: orConditions }),
         },
         include: {
           user: true,
@@ -479,42 +343,7 @@ export class SearchController {
         },
         where: {
           deposit_status: filter.split("_")[1] as any,
-          OR: [
-            {
-              id: search_term_string
-                ? ["hmr", "hmf"].includes(search_term_string[0].toLowerCase())
-                  ? search_term_number
-                    ? parseInt(search_term_number[0])
-                    : undefined
-                  : undefined
-                : undefined,
-            },
-            {
-              user_id: search_term_string
-                ? search_term_string[0].toLowerCase() === "hmu"
-                  ? search_term_number
-                    ? parseInt(search_term_number[0])
-                    : undefined
-                  : undefined
-                : undefined,
-            },
-            {
-              user: {
-                OR: [
-                  {
-                    name: {
-                      contains: src_term as string,
-                    },
-                  },
-                  {
-                    phone: {
-                      contains: src_term as string,
-                    },
-                  },
-                ],
-              },
-            },
-          ],
+          ...(orConditions.length > 0 && { OR: orConditions }),
         },
         include: {
           user: true,

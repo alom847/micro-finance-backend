@@ -215,12 +215,8 @@ export class WalletService {
     limit: string = "10",
     skip: string = "0"
   ) {
-    const search_term_string = src_term
-      ? (src_term as string).match(/^([A-Za-z\s]+)/gm)
-      : undefined;
-    const search_term_number = src_term
-      ? (src_term as string).match(/\d*\d/gm)
-      : undefined;
+    const search_term_string = (src_term as string)?.match(/^([A-Za-z\s]+)/gm);
+    const search_term_number = (src_term as string)?.match(/\d*\d/gm);
 
     // If src_term is undefined, return all withdrawals
     const whereClause = src_term
