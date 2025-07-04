@@ -172,7 +172,9 @@ export class KycsController {
   @Post("/update-selfie")
   @UseInterceptors(FileInterceptor("selfie"))
   async uploadSelfie(@Req() req, @UploadedFile() selfie: Express.Multer.File) {
-    console.log(selfie);
+    if (!selfie) {
+      throw new BadRequestException("No selfie file uploaded.");
+    }
 
     try {
       const selfie_url = await this.storageService.upload(
@@ -180,9 +182,13 @@ export class KycsController {
         selfie.buffer
       );
 
-      return this.kycService.updateSelfie(req.user.id, selfie_url);
+      return await this.kycService.updateSelfie(req.user.id, selfie_url);
     } catch (error) {
-      return { error: "Failed to upload file", details: error.message };
+      console.error("Error uploading selfie:", error);
+      throw new BadRequestException({
+        message: "Failed to upload selfie.",
+        error: error.message,
+      });
     }
   }
 }

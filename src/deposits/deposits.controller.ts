@@ -247,10 +247,13 @@ export class DepositsController {
     return { status: true, notes };
   }
 
-  @UseGuards(PermissionGuard)
-  @RequiredPermissions("agent_assignment")
   @Delete("note/:noteId")
-  async deleteUserNote(@Param("noteId", ParseIntPipe) noteId: number) {
+  async deleteUserNote(
+    @Req() req,
+    @Param("noteId", ParseIntPipe) noteId: number
+  ) {
+    if (req.user.role !== "Admin") return;
+
     await this.notesService.deleteNote(noteId);
     return { status: true, message: "Note deleted" };
   }
