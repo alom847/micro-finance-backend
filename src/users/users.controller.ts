@@ -598,6 +598,27 @@ export class UsersController {
 
   @UseGuards(PermissionGuard)
   @RequiredPermissions("user_management")
+  @Post(":id/update-dp")
+  @UseInterceptors(FileInterceptor("profile_img"))
+  async UpdateUserProfilePic(
+    @Req() req,
+    @Param("id", ParseIntPipe) id, @Body() body,
+    @UploadedFile() profile_img: Express.Multer.File
+  ) {
+    try {
+      const image_url = await this.storageService.upload(
+        profile_img.originalname,
+        profile_img.buffer
+      );
+
+      return this.usersService.updateProfilePic(id, image_url);
+    } catch (error) {
+      return { error: "Failed to upload file", details: error.message };
+    }
+  }
+
+  @UseGuards(PermissionGuard)
+  @RequiredPermissions("user_management")
   @Post("approve")
   async approve(@Req() req, @Body() body) {
     const signup_request = await this.databaseService.otp.findFirst({
