@@ -1100,43 +1100,29 @@ export class LoansService {
       });
     }
 
-    if (updated_loan.ref_id) {
+    if (["Agent"].includes(req.user.role ?? "")) {
       // calculate the commision amount
       const commission_amount =
         (Number(total_paid) / 100) *
         Number(updated_loan.loan_plan.commission_rate);
-
-      // get the wallet info of referrer
-      const referrer = await this.databaseService.user.findFirst({
+      
+      const updated_wallet = await this.databaseService.wallets.update({
         where: {
-          id: Number(updated_loan.ref_id),
+          user_id: req.user.id,
         },
-        include: {
-          wallets: true,
+        data: {
+          balance: {
+            increment: commission_amount,
+          },
         },
       });
 
-      if (referrer && commission_amount > 0) {
-        if (!referrer.wallets) return;
-        // credit the commission amount to referrer
-        const credited_referrer_wallet =
-          await this.databaseService.wallets.update({
-            where: {
-              id: referrer.wallets.id,
-            },
-            data: {
-              balance: {
-                increment: commission_amount,
-              },
-            },
-          });
-
-        // create a txn record for that
-        await this.databaseService.transactions.create({
-          data: {
-            wallet_id: referrer.wallets.id,
+      // create a txn record for that
+      await this.databaseService.transactions.create({
+        data: {
+            wallet_id: updated_wallet.id,
             amount: commission_amount,
-            balance: credited_referrer_wallet.balance,
+            balance: updated_wallet.balance,
             txn_type: "Credit",
             txn_status: "Completed",
             txn_note: `Repayment Commission from ${formateId(
@@ -1145,7 +1131,6 @@ export class LoansService {
             )}`,
           },
         });
-      }
     }
 
     this.notificationService.sendSMS(

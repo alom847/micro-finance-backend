@@ -944,53 +944,38 @@ export class DepositsService {
           },
         });
       }
-
-      if (updated_deposit.ref_id) {
+      
+      if (["Agent"].includes(req.user.role ?? "")) {
         // calculate the commision amount
         const commission_amount =
           (amount / 100) * Number(updated_deposit.deposit_plan.commission_rate);
 
-        // get the wallet info of referrer
-        const referrer = await tx.user.findFirst({
+        const update_wallet = await tx.wallets.update({
           where: {
-            id: Number(updated_deposit.ref_id),
+            user_id: req.user.id,
           },
-          include: {
-            wallets: true,
+          data: {
+            balance: {
+              increment: commission_amount,
+            },
           },
         });
 
-        if (referrer && commission_amount > 0) {
-          if (!referrer.wallets) return;
-          // credit the commission amount to referrer
-          const credited_referrer_wallet = await tx.wallets.update({
-            where: {
-              id: referrer.wallets.id,
-            },
-            data: {
-              balance: {
-                increment: commission_amount,
-              },
-            },
-          });
-
-          // create a txn record for that
-          await tx.transactions.create({
-            data: {
-              wallet_id: referrer.wallets.id,
-              amount: commission_amount,
-              balance: credited_referrer_wallet.balance,
-              txn_type: "Credit",
-              txn_status: "Completed",
-              txn_note: `Commission from ${formateId(
+        await tx.transactions.create({
+          data: {
+            wallet_id: update_wallet.id,
+            amount: commission_amount,
+            balance: update_wallet.balance,
+            txn_type: "Credit",
+            txn_status: "Completed",
+            txn_note: `Commission from ${formateId(
                 updated_deposit.id,
                 "RD"
-              )}`,
-            },
-          });
-        }
+            )}`,
+          },
+        });
       }
-
+      
       this.notificationService.sendSMS(
         updated_deposit.user.phone,
         templates.Recurring_Deposit_Repayment,
