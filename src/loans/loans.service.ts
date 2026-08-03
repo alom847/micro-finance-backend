@@ -1106,20 +1106,21 @@ export class LoansService {
         (Number(total_paid) / 100) *
         Number(updated_loan.loan_plan.commission_rate);
       
-      const updated_wallet = await this.databaseService.wallets.update({
-        where: {
-          user_id: req.user.id,
-        },
-        data: {
-          balance: {
-            increment: commission_amount,
+      if (commission_amount > 0) {
+        const updated_wallet = await this.databaseService.wallets.update({
+          where: {
+            user_id: req.user.id,
           },
-        },
-      });
+          data: {
+            balance: {
+              increment: commission_amount,
+            },
+          },
+        });
 
-      // create a txn record for that
-      await this.databaseService.transactions.create({
-        data: {
+        // create a txn record for that
+        await this.databaseService.transactions.create({
+          data: {
             wallet_id: updated_wallet.id,
             amount: commission_amount,
             balance: updated_wallet.balance,
@@ -1131,6 +1132,7 @@ export class LoansService {
             )}`,
           },
         });
+      }
     }
 
     this.notificationService.sendSMS(

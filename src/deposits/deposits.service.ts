@@ -950,30 +950,32 @@ export class DepositsService {
         const commission_amount =
           (amount / 100) * Number(updated_deposit.deposit_plan.commission_rate);
 
-        const update_wallet = await tx.wallets.update({
-          where: {
-            user_id: req.user.id,
-          },
-          data: {
-            balance: {
-              increment: commission_amount,
+        if (commission_amount > 0) {
+          const update_wallet = await tx.wallets.update({
+            where: {
+              user_id: req.user.id,
             },
-          },
-        });
+            data: {
+              balance: {
+                increment: commission_amount,
+              },
+            },
+          });
 
-        await tx.transactions.create({
-          data: {
-            wallet_id: update_wallet.id,
-            amount: commission_amount,
-            balance: update_wallet.balance,
-            txn_type: "Credit",
-            txn_status: "Completed",
-            txn_note: `Commission from ${formateId(
+          await tx.transactions.create({
+            data: {
+              wallet_id: update_wallet.id,
+              amount: commission_amount,
+              balance: update_wallet.balance,
+              txn_type: "Credit",
+              txn_status: "Completed",
+              txn_note: `Commission from ${formateId(
                 updated_deposit.id,
                 "RD"
-            )}`,
-          },
-        });
+              )}`,
+            },
+          });
+        }
       }
       
       this.notificationService.sendSMS(
