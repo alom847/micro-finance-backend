@@ -2,3 +2,6 @@ node_modules
 dist
 
 .env
+
+# Uploaded documents (local storage driver) - never commit
+/public/
