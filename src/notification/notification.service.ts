@@ -193,6 +193,28 @@ export class NotificationService {
   ) {
     // return console.log(`sent ${target} - ${template_id} - ${values}`);
 
+    // BSNL only accepts requests from India; when SMS_RELAY_URL is set, forward
+    // through the India-hosted relay (frontend /api/sms/send) instead.
+    if (process.env.SMS_RELAY_URL) {
+      try {
+        const { data } = await axios.post(
+          process.env.SMS_RELAY_URL,
+          { target, template_id, values },
+          {
+            headers: {
+              "x-sms-relay-secret": process.env.SMS_RELAY_SECRET,
+            },
+            timeout: 15000,
+          }
+        );
+
+        return data?.data;
+      } catch (e) {
+        console.log(e);
+        return;
+      }
+    }
+
     try {
       const { data } = await axios.post(
         `${this.BASE_URL}/Send_SMS`,
