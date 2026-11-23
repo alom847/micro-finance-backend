@@ -1,3 +1,6 @@
 # Callers authenticate with x-sms-relay-secret, checked inside the function.
 [functions.sms-relay]
 verify_jwt = false
+
+[functions.ip-check]
+verify_jwt = false
