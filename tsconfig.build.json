@@ -5,6 +5,7 @@
     "test",
     "dist",
     "public",
+    "supabase",
     "**/*spec.ts"
   ]
 }

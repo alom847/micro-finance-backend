@@ -194,7 +194,7 @@ export class NotificationService {
     // return console.log(`sent ${target} - ${template_id} - ${values}`);
 
     // BSNL only accepts requests from India; when SMS_RELAY_URL is set, forward
-    // through the India-hosted relay (frontend /api/sms/send) instead.
+    // through the India-hosted relay (supabase/functions/sms-relay) instead.
     if (process.env.SMS_RELAY_URL) {
       try {
         const { data } = await axios.post(
@@ -203,6 +203,8 @@ export class NotificationService {
           {
             headers: {
               "x-sms-relay-secret": process.env.SMS_RELAY_SECRET,
+              // Pin the Supabase Edge Function to Mumbai.
+              "x-region": "ap-south-1",
             },
             timeout: 15000,
           }
@@ -210,7 +212,12 @@ export class NotificationService {
 
         return data?.data;
       } catch (e) {
-        console.log(e);
+        // Not the whole error: it carries the relay secret and SMS contents.
+        console.log(
+          "SMS relay failed:",
+          e?.response?.status,
+          e?.response?.data ?? e?.message
+        );
         return;
       }
     }
